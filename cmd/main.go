@@ -25,7 +25,9 @@ package main
 import (
 	"os"
 
-	userspace "github.com/kris-nova/double-slit-experiment/userspace/go"
+	"github.com/kris-nova/double-slit-experiment/userspace"
+	userspace2 "github.com/kris-nova/double-slit-experiment/userspace"
+
 	"github.com/kris-nova/logger"
 
 	"github.com/urfave/cli/v2"
@@ -78,10 +80,7 @@ func main() {
 
 func RunDSE() error {
 	commandGlobalChecks()
-	observer := userspace.NewObserver([]userspace.ObservationPoints{
-		// TODO Pull these "profiles" out.
-		userspace.ProcessExecuted,
-	})
+	observer := userspace.NewObserver(userspace.DefaultProfile())
 	observer.PrintJSONEvents()
 	return nil
 }
@@ -91,13 +90,13 @@ func RunDSE() error {
 func commandGlobalChecks() {
 	// We will be loading eBPF probes directly into the kernel
 	// at runtime, so we will need privileged access fundamentally.
-	if !userspace.IsPrivileged() {
+	if !userspace2.IsPrivileged() {
 		logger.Critical("Permission denied.")
 		os.Exit(-1)
 	}
 
 	if rlimitinfinity {
-		err := userspace.SetRLimitInfinity()
+		err := userspace2.SetRLimitInfinity()
 		if err != nil {
 			logger.Critical("Error setting rlimit: %v", err)
 			os.Exit(1)

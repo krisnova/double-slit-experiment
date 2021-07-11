@@ -26,7 +26,7 @@ run: build
 	sudo ./$(executable)
 
 .PHONY: gen
-gen: sum vmlinux userspace/go/gen_execve_bpfel.go
+gen: sum vmlinux userspace/gen_execve_bpfel.go
 
 .PHONY: vmlinux
 vmlinux: probe/vmlinux.h
@@ -44,15 +44,15 @@ clean:
 	-rm userspace/go/gen*
 	-rm probe/vmlinux.h
 
-$(executable): cmd/main.go userspace/go/gen_execve_bpfel.go
+$(executable): cmd/main.go userspace/gen_execve_bpfel.go
 	CGO_ENABLED=0 go build -o $(executable) cmd/main.go
 
 probe/vmlinux.h:
 	bpftool btf dump file /sys/kernel/btf/vmlinux format c > probe/vmlinux.h
 
-userspace/go/gen_execve_bpfel.go: probe/bpf.c
-	go generate userspace/go/*.go
-	rm userspace/go/*.o
+userspace/gen_execve_bpfel.go: probe/bpf.c
+	go generate userspace/*.go
+	rm userspace/*.o
 
 go.sum:
 	go mod download github.com/cilium/ebpf

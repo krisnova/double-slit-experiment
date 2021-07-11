@@ -1,23 +1,42 @@
-# double-slit-experiment
-Identify containers at runtime and observe them. No container runtime required. Read only access to the kernel.
+# Runtime Linux and Container Telemetry 
 
-# Conventions
+**The Double Slit Experiment**
 
-### /probe
+Taken from an [interesting physics anomaly](https://en.wikipedia.org/wiki/Double-slit_experiment) where the behavior of a physical system mutates simply by being observed.
 
-This is the BPF probe code.
-This code should standalone and compile to an elf object with a corresponding Makefile.
+The thesis behind the project is that meaningful well thought out telemetry could change the behavior of broader systems.
 
-### /userspace
+---
 
-There are two userspace components (at least for now).
+# About
 
-#### /userspace/go
+This is a library of abstractions build around Go and eBPF code. 
 
-This is the main `.go` library for the project.
+The library will aggregate events from the Linux kernel at runtime using [eBPF](https://ebpf.io/).
 
-#### /userspace/c
+The abstractions are `ObservationPoint`'s. These are aggregate systems in Go built around [tracepoints](https://www.kernel.org/doc/html/latest/trace/tracepoints.html) in the Linux kernel.
 
-This is a `.so` header library for the project.
+Each `ObservationPoint` is defined by a function name, and each implements the `Event` interface.
+
+```go 
+type Event interface {
+	JSON() ([]byte, error)
+	String() string
+	Code() int
+	Name() string
+}
+```
+
+### ProcessExecuted Observation Point
+
+The library can send an event whenever a process is executed globally on a Linux system.
+
+```go
+// ProcessExecuted will aggregate tracepoint data from the kernel
+// and send a generic Event back over a channel.
+func ProcessExecuted(ch chan Event) {
+	ch <- evt // Send events back out over the channel
+}
+```
 
 
