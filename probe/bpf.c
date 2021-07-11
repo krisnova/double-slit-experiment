@@ -1,4 +1,6 @@
 #include "vmlinux.h"
+#include <linux/types.h>
+#include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
 #define FNAME_LEN 32
