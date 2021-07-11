@@ -16,7 +16,7 @@
 #    ╚═╝  ╚═══╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝
 
 
-executable=double-slit-experiment
+executable=dse
 
 .PHONY: build
 build: gen $(executable)

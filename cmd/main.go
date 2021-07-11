@@ -23,55 +23,87 @@
 package main
 
 import (
-	"encoding/binary"
-	"bytes"
 	"os"
-	"github.com/kris-nova/logger"
+
 	userspace "github.com/kris-nova/double-slit-experiment/userspace/go"
+	"github.com/kris-nova/logger"
+
+	"github.com/urfave/cli/v2"
+)
+
+var (
+
+	// [Command Line Flags]
+
+	// rlimitinfinity toggles setrlimit()
+	rlimitinfinity bool = true
 )
 
 func main() {
 
-	err := userspace.SetRLimitInfinity()
+	app := &cli.App{
+		Usage: "Container runtime telemetry",
+		Name:  "The Double Slit Experiment",
+		Action: func(context *cli.Context) error {
+			cli.ShowAppHelpAndExit(context, 0)
+			return nil
+		},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:        "rlimit-infinity",
+				Aliases:     []string{"r"},
+				Value:       true,
+				Destination: &rlimitinfinity,
+				Usage:       "Toggle the kernel parameter setrlimit()",
+			},
+		},
+		Commands: []*cli.Command{
+			{
+				Name:    "run",
+				Aliases: []string{"a"},
+				Usage:   "Run with the default profile, and print JSON events.",
+				Action: func(c *cli.Context) error {
+					return RunDSE() // X gonna give it to ya
+				},
+			},
+		},
+	}
+
+	err := app.Run(os.Args)
 	if err != nil {
-		logger.Critical("Error setting rlimit: %v", err)
-		os.Exit(1)
+		logger.Critical(err.Error())
 	}
 
-	reader, err := userspace.ExecveR()
-	if err != nil {
-		logger.Critical("Error: %v", err)
-		os.Exit(1)
+}
+
+func RunDSE() error {
+	commandGlobalChecks()
+	observer := userspace.NewObserver([]userspace.ObservationPoints{
+		// TODO Pull these "profiles" out.
+		userspace.ProcessExecuted,
+	})
+	observer.PrintJSONEvents()
+	return nil
+}
+
+// commandGlobalChecks is used to check the runtime constraints of the
+// system. This is just a collection of checks we use in many places.
+func commandGlobalChecks() {
+	// We will be loading eBPF probes directly into the kernel
+	// at runtime, so we will need privileged access fundamentally.
+	if !userspace.IsPrivileged() {
+		logger.Critical("Permission denied.")
+		os.Exit(-1)
 	}
 
-	// Sample code for now
-	// Do not keep!
-	// We can use this to understand how
-	// we can start pulling data out of
-	// the kernel.
-	for {
-		event, err := reader.Read()
+	if rlimitinfinity {
+		err := userspace.SetRLimitInfinity()
 		if err != nil {
-			logger.Warning("Read event error: %v", err)
+			logger.Critical("Error setting rlimit: %v", err)
+			os.Exit(1)
 		}
-
-		if event.LostSamples != 0 {
-			logger.Warning("Kernel event ring buffer full, dropped %d events", event.LostSamples)
-			continue
-		}
-
-		b := bytes.NewBuffer(event.RawSample)
-
-		var data userspace.E_exec_data_t
-		err = binary.Read(b, binary.LittleEndian, &data)
-		if err != nil {
-			logger.Warning("Kernel perf event error: %v", err)
-			continue
-		}
-
-		// event (CPU info)
-		// data
-		logger.Always("[%s] (%d): %s", data.Comm, data.Pid, data.F_name)
+	} else {
+		// RLimit infinity should only be turned off in very rare situations (testing, debugging, etc)
+		logger.Warning("setrlimit() infinity has NOT been enabled. errors may occur.")
 	}
-
 }

@@ -18,21 +18,28 @@
 package userspace
 
 import (
+	"fmt"
 	"os"
-	"github.com/cilium/ebpf/perf"
-	"github.com/cilium/ebpf/link"
 
+	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/perf"
 )
 
-func ExecveR() (*perf.Reader, error) {
+func BPF_read_execve() (*perf.Reader, error) {
 	objs := gen_execveObjects{}
 	loadGen_execveObjects(&objs, nil)
 	link.Tracepoint("syscalls", "sys_enter_execve", objs.EnterExecve)
 
+	if objs.Events == nil {
+		// We are unable to access events from the kernel, most likely
+		// this is a permissions error (not running as root/privileged).
+		return nil, fmt.Errorf("Unable to access events")
+	}
+
 	return perf.NewReader(objs.Events, os.Getpagesize())
 }
 
-type E_exec_data_t struct {
+type exec_data_t struct {
 	Pid    uint32
 	F_name [32]byte
 	Comm   [32]byte
