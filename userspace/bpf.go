@@ -17,7 +17,7 @@
 
 package userspace
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang gen_execve ../../probe/bpf.c -- -I/usr/include/bpf -I.
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang gen_probe ../probe/bpf.c -- -I/usr/include/bpf -I.
 
 import (
 	"fmt"

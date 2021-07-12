@@ -26,8 +26,8 @@ import (
 )
 
 func BPF_read_execve() (*perf.Reader, error) {
-	objs := gen_execveObjects{}
-	loadGen_execveObjects(&objs, nil)
+	objs := gen_probeObjects{}
+	loadGen_probeObjects(&objs, nil)
 	link.Tracepoint("syscalls", "sys_enter_execve", objs.EnterExecve)
 
 	if objs.Events == nil {

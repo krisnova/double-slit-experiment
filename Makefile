@@ -19,14 +19,14 @@
 executable=dse
 
 .PHONY: build
-build: gen $(executable)
+build: clean gen $(executable)
 
 .PHONY: run
 run: build
 	sudo ./$(executable)
 
 .PHONY: gen
-gen: sum vmlinux userspace/gen_execve_bpfel.go
+gen: sum vmlinux userspace/gen_probe_bpfel.go
 
 .PHONY: vmlinux
 vmlinux: probe/vmlinux.h
@@ -41,16 +41,16 @@ fmt: sum
 .PHONY: clean
 clean:
 	-rm $(executable)
-	-rm userspace/go/gen*
+	-rm userspace/gen*
 	-rm probe/vmlinux.h
 
-$(executable): cmd/main.go userspace/gen_execve_bpfel.go
+$(executable): cmd/main.go userspace/gen_probe_bpfel.go
 	CGO_ENABLED=0 go build -o $(executable) cmd/main.go
 
 probe/vmlinux.h:
 	bpftool btf dump file /sys/kernel/btf/vmlinux format c > probe/vmlinux.h
 
-userspace/gen_execve_bpfel.go: probe/bpf.c
+userspace/gen_probe_bpfel.go: probe/bpf.c
 	go generate userspace/*.go
 	rm userspace/*.o
 

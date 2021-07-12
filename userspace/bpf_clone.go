@@ -17,9 +17,30 @@
 
 package userspace
 
-func DefaultProfile() []ObservationPoints {
-	return []ObservationPoints{
-		ProcessExecuted,
-		ContainerStarted,
+import (
+	"fmt"
+	"os"
+
+	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/perf"
+)
+
+func BPF_read_clone() (*perf.Reader, error) {
+	objs := gen_probeObjects{}
+	loadGen_probeObjects(&objs, nil)
+	link.Tracepoint("syscalls", "sys_enter_clone", objs.EnterClone)
+
+	if objs.Events == nil {
+		// We are unable to access events from the kernel, most likely
+		// this is a permissions error (not running as root/privileged).
+		return nil, fmt.Errorf("Unable to access events")
 	}
+
+	return perf.NewReader(objs.Events, os.Getpagesize())
+}
+
+type clone_data_t struct {
+	Parent_tid  int
+	Child_tid   int
+	Clone_flags uint64
 }
