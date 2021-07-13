@@ -40,7 +40,7 @@ func BPF_read_clone() (*perf.Reader, error) {
 }
 
 type clone_data_t struct {
-	Parent_tid  int
-	Child_tid   int
+	Parent_tid  uint32
+	Child_tid   uint32
 	Clone_flags uint64
 }

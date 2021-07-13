@@ -49,7 +49,7 @@ func ContainerStarted(ch chan Event) error {
 		}
 
 		// Send Event over channel
-		p := NewContainerEvent(event, data, "ProcessExecuted", 100)
+		p := NewContainerEvent(event, data, "ContainerStarted", 110)
 		ch <- p
 	}
 	return nil
@@ -60,8 +60,8 @@ type ContainerEvent struct {
 	EventCode int          `json:"Code,omitempty"`
 	EventName string       `json:"Name"`
 	data      clone_data_t `json:"Data"`
-	//Filename  string       `json:"Filename"`
-	//Comm      string       `json:"Comm"`
+	ParentPid int          `json:"ParentPid"`
+	ChildPid  int          `json:"ChildPid"`
 }
 
 func NewContainerEvent(event perf.Record, cloneData clone_data_t, name string, code int) *ContainerEvent {
@@ -70,8 +70,8 @@ func NewContainerEvent(event perf.Record, cloneData clone_data_t, name string, c
 		data:      cloneData,
 		EventCode: code,
 		EventName: name,
-		//Filename:  BytesToString32(execData.F_name),
-		//Comm:      BytesToString32(execData.Comm),
+		ParentPid: int(cloneData.Parent_tid),
+		ChildPid:  int(cloneData.Child_tid),
 	}
 }
 

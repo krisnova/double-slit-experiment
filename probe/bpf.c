@@ -34,9 +34,9 @@ struct {
 
 
 struct clone_data_t {
-    int *parent_tid;
-    int *child_tid;
-    unsigned long clone_flags;
+    __u32 parent_tid;
+    __u32 child_tid;
+    __u64 clone_flags;
 };
 
 struct clone_entry_args_t {
@@ -73,15 +73,14 @@ SEC("tracepoint/syscalls/sys_enter_clone")
 int enter_clone(struct clone_entry_args_t  *args){
     struct clone_data_t clone_data = {};
 
-    clone_data.child_tid = args->child_tidptr;
-    clone_data.parent_tid = args->parent_tidptr;
+    bpf_probe_read_user(&clone_data.parent_tid, sizeof(clone_data.parent_tid), args->parent_tidptr);
+    bpf_probe_read_user(&clone_data.child_tid, sizeof(clone_data.child_tid), args->child_tidptr);
     clone_data.clone_flags = args->clone_flags;
 
     // Send out on the perf event map
     bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &clone_data, sizeof(clone_data));
     return 0;
 }
-
 
 struct exec_data_t {
     __u32 pid;
