@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 
@@ -73,6 +74,14 @@ SEC("tracepoint/syscalls/sys_enter_clone")
 int enter_clone(struct clone_entry_args_t  *args){
     struct clone_data_t clone_data = {};
 
+    // Parent=0
+    if (args->parent_tidptr == 0) {
+        return 0;
+    }
+
+    //bpf_printk("args.child    : %d", args->child_tidptr);
+    //bpf_printk("args.parent   : %d", args->parent_tidptr);
+
     bpf_probe_read_user(&clone_data.parent_tid, sizeof(clone_data.parent_tid), args->parent_tidptr);
     bpf_probe_read_user(&clone_data.child_tid, sizeof(clone_data.child_tid), args->child_tidptr);
     clone_data.clone_flags = args->clone_flags;
@@ -125,6 +134,8 @@ int enter_execve(struct execve_entry_args_t *args){
 
     pid_tgid = bpf_get_current_pid_tgid();
     exec_data.pid = LAST_32_BITS(pid_tgid);
+    //bpf_printk("pid: %d", LAST_32_BITS(pid_tgid));
+
     bpf_probe_read_user_str(exec_data.fname, sizeof(exec_data.fname), args->filename);
     bpf_get_current_comm(exec_data.comm, sizeof(exec_data.comm));
 

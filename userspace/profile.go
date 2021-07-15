@@ -17,9 +17,9 @@
 
 package userspace
 
-func DefaultProfile() []ObservationPoints {
-	return []ObservationPoints{
-		ProcessExecuted,
-		ContainerStarted,
+func DefaultProfile() ObservationPoints {
+	return ObservationPoints{
+		"ProcessExecuted":  ProcessExecuted,
+		"ContainerStarted": ContainerStarted,
 	}
 }

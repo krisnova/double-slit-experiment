@@ -34,14 +34,22 @@ import (
 )
 
 var (
-
-	// [Command Line Flags]
-
 	// rlimitinfinity toggles setrlimit()
 	rlimitinfinity bool = true
+
+	// verbosity toggles verbose mode
+	verbosity bool = true
 )
 
 func main() {
+
+	// cli assumes "-v" for version.
+	// override that here
+	cli.VersionFlag = &cli.BoolFlag{
+		Name:    "version",
+		Aliases: []string{"V"},
+		Usage:   "Print the version",
+	}
 
 	app := &cli.App{
 		Usage: "Container runtime telemetry",
@@ -57,6 +65,13 @@ func main() {
 				Value:       true,
 				Destination: &rlimitinfinity,
 				Usage:       "Toggle the kernel parameter setrlimit()",
+			},
+			&cli.BoolFlag{
+				Name:        "verbose",
+				Aliases:     []string{"v"},
+				Value:       true,
+				Destination: &verbosity,
+				Usage:       "Toggle the verbosity of the program.",
 			},
 		},
 		Commands: []*cli.Command{
@@ -88,6 +103,14 @@ func RunDSE() error {
 // commandGlobalChecks is used to check the runtime constraints of the
 // system. This is just a collection of checks we use in many places.
 func commandGlobalChecks() {
+
+	if verbosity {
+		logger.BitwiseLevel = logger.LogEverything
+		logger.Debug("[Verbose Mode Enabled]")
+	} else {
+		logger.BitwiseLevel = logger.LogCritical | logger.LogWarning | logger.LogAlways
+	}
+
 	// We will be loading eBPF probes directly into the kernel
 	// at runtime, so we will need privileged access fundamentally.
 	if !userspace2.IsPrivileged() {

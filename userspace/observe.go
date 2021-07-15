@@ -27,19 +27,19 @@ import (
 // ObservationPoints are small systems that are expected to "hang".
 // These systems should return generic Event{}'s when an event occurs.
 // These systems should error, and be restarted on error.
-type ObservationPoints func(chan Event) error
+type ObservationPoints map[string]func(chan Event) error
 
 // Observer is the main data structure that can be used
 // to observe the system based on configured ObservationPoints.
 type Observer struct {
-	points  []ObservationPoints
+	points  ObservationPoints
 	eventCh chan Event
 }
 
 // NewObserver is used to initialize and start a new
 // observer. After calling this function, the observer
 // will be listening to the kernel!
-func NewObserver(points []ObservationPoints) *Observer {
+func NewObserver(points ObservationPoints) *Observer {
 	observer := &Observer{
 		points:  points,
 		eventCh: make(chan Event),
@@ -80,7 +80,8 @@ func (o *Observer) LogEvents() {
 func (o *Observer) start() {
 	once := sync.Once{}
 	once.Do(func() {
-		for _, obsPoint := range o.points {
+		for name, obsPoint := range o.points {
+			logger.Debug("Loading ObservationPoint: %s", name)
 			go func() {
 				// Cycle the observation point
 				// across all errors!

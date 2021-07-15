@@ -56,22 +56,24 @@ func ContainerStarted(ch chan Event) error {
 }
 
 type ContainerEvent struct {
-	Event     perf.Record  `json:"Event"`
-	EventCode int          `json:"Code,omitempty"`
-	EventName string       `json:"Name"`
-	data      clone_data_t `json:"Data"`
-	ParentPid int          `json:"ParentPid"`
-	ChildPid  int          `json:"ChildPid"`
+	Event      perf.Record  `json:"Event"`
+	EventCode  int          `json:"Code,omitempty"`
+	EventName  string       `json:"Name"`
+	data       clone_data_t `json:"Data"`
+	ParentPid  int          `json:"ParentPid"`
+	ChildPid   int          `json:"ChildPid"`
+	CloneFlags uint         `json: "CloneFlags"`
 }
 
 func NewContainerEvent(event perf.Record, cloneData clone_data_t, name string, code int) *ContainerEvent {
 	return &ContainerEvent{
-		Event:     event,
-		data:      cloneData,
-		EventCode: code,
-		EventName: name,
-		ParentPid: int(cloneData.Parent_tid),
-		ChildPid:  int(cloneData.Child_tid),
+		Event:      event,
+		data:       cloneData,
+		EventCode:  code,
+		EventName:  name,
+		ParentPid:  int(cloneData.Parent_tid),
+		ChildPid:   int(cloneData.Child_tid),
+		CloneFlags: uint(cloneData.Clone_flags),
 	}
 }
 

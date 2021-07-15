@@ -62,6 +62,7 @@ type ProcessEvent struct {
 	data      exec_data_t `json:"Data"`
 	Filename  string      `json:"Filename"`
 	Comm      string      `json:"Comm"`
+	PID       uint        `json: "PID"`
 }
 
 func NewProcessEvent(event perf.Record, execData exec_data_t, name string, code int) *ProcessEvent {
@@ -72,6 +73,7 @@ func NewProcessEvent(event perf.Record, execData exec_data_t, name string, code 
 		EventName: name,
 		Filename:  BytesToString32(execData.F_name),
 		Comm:      BytesToString32(execData.Comm),
+		PID:       uint(execData.Pid),
 	}
 }
 
