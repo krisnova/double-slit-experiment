@@ -23,14 +23,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/cilium/ebpf/link"
+
 	"github.com/cilium/ebpf/perf"
 )
 
-func ContainerStarted(ch chan Event) error {
-	reader, err := BPF_read_clone()
-	if err != nil {
-		return err
-	}
+func ProcessExecuted(reader *perf.Reader, reference ObservationReference) error {
 	for {
 		event, err := reader.Read()
 		if err != nil {
@@ -42,53 +40,68 @@ func ContainerStarted(ch chan Event) error {
 		}
 
 		b := bytes.NewBuffer(event.RawSample)
-		var data clone_data_t
+		var data exec_data_t
 		err = binary.Read(b, binary.LittleEndian, &data)
 		if err != nil {
 			return fmt.Errorf("Kernel perf event error: %v", err)
 		}
 
 		// Send Event over channel
-		p := NewContainerEvent(event, data, "ContainerStarted", 110)
-		ch <- p
+		p := NewProcessEvent(event, data, "ProcessExecuted", 100)
+		reference.eventCh <- p
 	}
 	return nil
 }
 
-type ContainerEvent struct {
-	Event      perf.Record  `json:"Event"`
-	EventCode  int          `json:"Code,omitempty"`
-	EventName  string       `json:"Name"`
-	data       clone_data_t `json:"Data"`
-	ParentPid  int          `json:"ParentPid"`
-	ChildPid   int          `json:"ChildPid"`
-	CloneFlags uint         `json: "CloneFlags"`
+type ProcessObservationPoint struct {
 }
 
-func NewContainerEvent(event perf.Record, cloneData clone_data_t, name string, code int) *ContainerEvent {
-	return &ContainerEvent{
-		Event:      event,
-		data:       cloneData,
-		EventCode:  code,
-		EventName:  name,
-		ParentPid:  int(cloneData.Parent_tid),
-		ChildPid:   int(cloneData.Child_tid),
-		CloneFlags: uint(cloneData.Clone_flags),
+func NewProcessObservationPoint() *ProcessObservationPoint {
+	return &ProcessObservationPoint{}
+}
+
+func (p ProcessObservationPoint) LoadProbe(probe gen_probeObjects) {
+	link.Tracepoint(BPFGroupSyscalls, "sys_enter_execve", probe.EnterExecve)
+}
+
+func (p ProcessObservationPoint) ObservationFunc() func(reader *perf.Reader, reference ObservationReference) error {
+	return ProcessExecuted
+}
+
+type ProcessEvent struct {
+	Event     perf.Record `json:"Event"`
+	EventCode int         `json:"Code,omitempty"`
+	EventName string      `json:"Name"`
+	data      exec_data_t `json:"Data"`
+	Filename  string      `json:"Filename"`
+	Comm      string      `json:"Comm"`
+	PID       uint        `json: "PID"`
+}
+
+func NewProcessEvent(event perf.Record, execData exec_data_t, name string, code int) *ProcessEvent {
+	return &ProcessEvent{
+		Event:     event,
+		data:      execData,
+		EventCode: code,
+		EventName: name,
+		Filename:  BytesToString32(execData.F_name),
+		Comm:      BytesToString32(execData.Comm),
+		PID:       uint(execData.Pid),
 	}
 }
 
-func (e *ContainerEvent) JSON() ([]byte, error) {
-	return json.Marshal(e)
+func (p *ProcessEvent) JSON() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-func (e *ContainerEvent) String() string {
-	return fmt.Sprintf("Parent(%d) -> Child(%d) [%d]", e.data.Parent_tid, e.data.Child_tid, e.data.Clone_flags)
+func (p *ProcessEvent) String() string {
+	return fmt.Sprintf("[%s] (%d) (CPU: %d): %s", p.data.Comm, p.data.Pid, p.Event.CPU, p.data.F_name)
 }
 
-func (e *ContainerEvent) Code() int {
-	return e.EventCode
+func (p *ProcessEvent) Code() int {
+	return p.EventCode
 }
 
-func (e *ContainerEvent) Name() string {
-	return e.EventName
+func (p *ProcessEvent) Name() string {
+	return p.EventName
 }

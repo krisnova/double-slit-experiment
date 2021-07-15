@@ -96,6 +96,10 @@ func main() {
 func RunDSE() error {
 	commandGlobalChecks()
 	observer := userspace.NewObserver(userspace.DefaultProfile())
+	err := observer.Start()
+	if err != nil {
+		return err
+	}
 	observer.PrintJSONEvents()
 	return nil
 }

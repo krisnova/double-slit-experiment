@@ -1,3 +1,5 @@
+cmake-build-debug
+.idea
 **/gen_*
 probe/vmlinux.h
 double-slit-experiment
