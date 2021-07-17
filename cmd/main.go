@@ -99,7 +99,7 @@ func RunDSE() error {
 	if err != nil {
 		return err
 	}
-	observer.LogEvents()
+	observer.PrintJSONEvents()
 	return nil
 }
 

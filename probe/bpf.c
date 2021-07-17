@@ -35,6 +35,59 @@ struct {
 } events SEC(".maps");
 
 
+struct signal_deliver_data_t {
+    int signal;
+    int errno;
+    int code;
+    unsigned long sa_handler;
+    unsigned long sa_flags;
+};
+
+struct signal_deliver_entry_args_t {
+    __u64 _unused;
+    __u64 _unused2;
+    int signal;
+    int errno;
+    int code;
+    unsigned long sa_handler;
+    unsigned long sa_flags;
+};
+
+/**
+ * name: signal_deliver
+ID: 183
+format:
+        field:unsigned short common_type;       offset:0;       size:2; signed:0;
+        field:unsigned char common_flags;       offset:2;       size:1; signed:0;
+        field:unsigned char common_preempt_count;       offset:3;       size:1;signed:0;
+        field:int common_pid;   offset:4;       size:4; signed:1;
+
+        field:int sig;  offset:8;       size:4; signed:1;
+        field:int errno;        offset:12;      size:4; signed:1;
+        field:int code; offset:16;      size:4; signed:1;
+        field:unsigned long sa_handler; offset:24;      size:8; signed:0;
+        field:unsigned long sa_flags;   offset:32;      size:8; signed:0;
+
+print fmt: "sig=%d errno=%d code=%d sa_handler=%lx sa_flags=%lx", REC->sig, REC->errno, REC->code, REC->sa_handler, REC->sa_flags
+ */
+SEC("tracepoint/signal/signal_deliver")
+int signal_deliver(struct signal_deliver_entry_args_t  *args){
+    struct signal_deliver_data_t signal_data = {};
+
+    signal_data.signal = args->signal;
+    signal_data.errno = args->errno;
+    signal_data.code = args->code;
+    //signal_data.sa_flags = args->sa_flags;
+    signal_data.sa_handler = args->sa_handler;
+
+    bpf_printk("---tracepoint/signal/signal_deliver---");
+
+    // Send out on the perf event map
+    bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &signal_data, sizeof(signal_data));
+    return 0;
+}
+
+
 struct clone_data_t {
     __u32 parent_tid;
     __u32 child_tid;

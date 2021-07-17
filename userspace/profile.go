@@ -20,6 +20,7 @@ package userspace
 func DefaultProfile() ObservationPoints {
 	FilterCloneFlagMask = CEMPTY
 	return ObservationPoints{
+		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{}),
 		"ProcessExecuted": NewProcessObservationPoint([]FilterExecve{
 			FilterEmptyFilename,
 		}),
