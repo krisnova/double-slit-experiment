@@ -13,19 +13,20 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ *     ███╗   ██╗ ██████╗ ██╗   ██╗ █████╗
+ *     ████╗  ██║██╔═████╗██║   ██║██╔══██╗
+ *     ██╔██╗ ██║██║██╔██║██║   ██║███████║
+ *     ██║╚██╗██║████╔╝██║╚██╗ ██╔╝██╔══██║
+ *     ██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║
+ *     ╚═╝  ╚═══╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝
  */
 
 
 #include "vmlinux.h"
+#include "bpf.h"
 #include <bpf/bpf_helpers.h>
 
-
-
-
-#define LAST_32_BITS(x) x & 0xFFFFFFFF
-#define FIRST_32_BITS(x) x >> 32
-#define DATA_SIZE_32 32
-#define DATA_SIZE_64 64
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
@@ -86,9 +87,6 @@ int enter_clone(struct clone_entry_args_t  *args){
     bpf_probe_read_user(&clone_data.child_tid, sizeof(clone_data.child_tid), args->child_tidptr);
     clone_data.clone_flags = args->clone_flags;
 
-    bpf_printk("--- tracepoint/syscalls/sys_enter_clone ---");
-
-
     // Send out on the perf event map
     bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &clone_data, sizeof(clone_data));
     return 0;
@@ -140,8 +138,6 @@ int enter_execve(struct execve_entry_args_t *args){
 
     bpf_probe_read_user_str(exec_data.fname, sizeof(exec_data.fname), args->filename);
     bpf_get_current_comm(exec_data.comm, sizeof(exec_data.comm));
-
-    bpf_printk("--- tracepoint/syscalls/sys_enter_execve ---");
 
     // Send out on the perf event map
     bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &exec_data, sizeof(exec_data));
