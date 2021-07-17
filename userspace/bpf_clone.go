@@ -18,25 +18,21 @@
 package userspace
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"os"
 
-	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 )
 
-func BPF_read_clone() (*perf.Reader, error) {
-	objs := gen_probeObjects{}
-	loadGen_probeObjects(&objs, nil)
-	link.Tracepoint("syscalls", "sys_enter_clone", objs.EnterClone)
-
-	if objs.Events == nil {
-		// We are unable to access events from the kernel, most likely
-		// this is a permissions error (not running as root/privileged).
-		return nil, fmt.Errorf("Unable to access events")
+func EventClone(event perf.Record) (*clone_data_t, error) {
+	buffer := bytes.NewBuffer(event.RawSample)
+	var data clone_data_t
+	err := binary.Read(buffer, binary.LittleEndian, &data)
+	if err != nil {
+		return nil, fmt.Errorf("clone() kernel event perf: %v", err)
 	}
-
-	return perf.NewReader(objs.Events, os.Getpagesize())
+	return &data, nil
 }
 
 type clone_data_t struct {

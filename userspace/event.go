@@ -22,6 +22,5 @@ package userspace
 type Event interface {
 	JSON() ([]byte, error)
 	String() string
-	Code() int
 	Name() string
 }

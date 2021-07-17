@@ -26,7 +26,6 @@ import (
 	"os"
 
 	"github.com/kris-nova/double-slit-experiment/userspace"
-	userspace2 "github.com/kris-nova/double-slit-experiment/userspace"
 
 	"github.com/kris-nova/logger"
 
@@ -117,13 +116,13 @@ func commandGlobalChecks() {
 
 	// We will be loading eBPF probes directly into the kernel
 	// at runtime, so we will need privileged access fundamentally.
-	if !userspace2.IsPrivileged() {
+	if !userspace.IsPrivileged() {
 		logger.Critical("Permission denied.")
 		os.Exit(-1)
 	}
 
 	if rlimitinfinity {
-		err := userspace2.SetRLimitInfinity()
+		err := userspace.SetRLimitInfinity()
 		if err != nil {
 			logger.Critical("Error setting rlimit: %v", err)
 			os.Exit(1)

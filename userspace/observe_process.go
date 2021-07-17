@@ -18,71 +18,63 @@
 package userspace
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-
-	"github.com/cilium/ebpf/link"
 
 	"github.com/cilium/ebpf/perf"
 )
 
-func ProcessExecuted(reader *perf.Reader, reference ObservationReference) error {
-	for {
-		event, err := reader.Read()
-		if err != nil {
-			return fmt.Errorf("Read event error: %v", err)
-		}
+type ProcessObservationPoint struct {
+	reference ObservationReference
+}
 
-		if event.LostSamples != 0 {
-			return fmt.Errorf("Kernel event ring buffer full, dropped %d events", event.LostSamples)
-		}
-
-		b := bytes.NewBuffer(event.RawSample)
-		var data exec_data_t
-		err = binary.Read(b, binary.LittleEndian, &data)
-		if err != nil {
-			return fmt.Errorf("Kernel perf event error: %v", err)
-		}
-
-		// Send Event over channel
-		p := NewProcessEvent(event, data, "ProcessExecuted", 100)
-		reference.eventCh <- p
+func (p *ProcessObservationPoint) Event(record perf.Record) error {
+	execData, err := EventExecve(record)
+	if err != nil {
+		return err
 	}
+
+	// Filter filename=""
+	fileName := BytesToString32(execData.F_name)
+	if fileName == "" {
+		return nil
+	}
+
+	//logger.Always("ProcessEvent")
+	p.reference.eventCh <- NewProcessEvent("ProcessExecuted", record.CPU, execData)
 	return nil
 }
 
-type ProcessObservationPoint struct {
+func (p *ProcessObservationPoint) Tracepoints() map[string]TracepointData {
+	return map[string]TracepointData{
+		"sys_enter_execve": {
+			Group:      BPFGroupSyscalls,
+			Tracepoint: "sys_enter_execve",
+			Program:    p.reference.probe.EnterExecve,
+		},
+	}
+}
+
+func (p *ProcessObservationPoint) SetReference(reference ObservationReference) {
+	p.reference = reference
 }
 
 func NewProcessObservationPoint() *ProcessObservationPoint {
 	return &ProcessObservationPoint{}
 }
 
-func (p ProcessObservationPoint) LoadProbe(probe gen_probeObjects) {
-	link.Tracepoint(BPFGroupSyscalls, "sys_enter_execve", probe.EnterExecve)
-}
-
-func (p ProcessObservationPoint) ObservationFunc() func(reader *perf.Reader, reference ObservationReference) error {
-	return ProcessExecuted
-}
-
 type ProcessEvent struct {
-	Event     perf.Record `json:"Event"`
-	EventCode int         `json:"Code,omitempty"`
-	EventName string      `json:"Name"`
-	data      exec_data_t `json:"Data"`
-	Filename  string      `json:"Filename"`
-	Comm      string      `json:"Comm"`
-	PID       uint        `json: "PID"`
+	CPU       int            `json:"CPU"`
+	EventName string         `json:"Name"`
+	data      *execve_data_t `json:"Data"`
+	Filename  string         `json:"Filename"`
+	Comm      string         `json:"Comm"`
+	PID       uint           `json:"PID"`
 }
 
-func NewProcessEvent(event perf.Record, execData exec_data_t, name string, code int) *ProcessEvent {
+func NewProcessEvent(name string, cpu int, execData *execve_data_t) *ProcessEvent {
 	return &ProcessEvent{
-		Event:     event,
 		data:      execData,
-		EventCode: code,
 		EventName: name,
 		Filename:  BytesToString32(execData.F_name),
 		Comm:      BytesToString32(execData.Comm),
@@ -95,11 +87,7 @@ func (p *ProcessEvent) JSON() ([]byte, error) {
 }
 
 func (p *ProcessEvent) String() string {
-	return fmt.Sprintf("[%s] (%d) (CPU: %d): %s", p.data.Comm, p.data.Pid, p.Event.CPU, p.data.F_name)
-}
-
-func (p *ProcessEvent) Code() int {
-	return p.EventCode
+	return fmt.Sprintf("[%s] (%d) (CPU: %d): %s", p.data.Comm, p.data.Pid, p.CPU, p.data.F_name)
 }
 
 func (p *ProcessEvent) Name() string {

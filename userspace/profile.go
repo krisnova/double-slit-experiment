@@ -19,7 +19,7 @@ package userspace
 
 func DefaultProfile() ObservationPoints {
 	return ObservationPoints{
-		"ProcessExecuted": NewProcessObservationPoint(),
-		//"ContainerStarted": NewContainerObservationPoint(),
+		"ProcessExecuted":  NewProcessObservationPoint(),
+		"ContainerStarted": NewContainerObservationPoint(),
 	}
 }

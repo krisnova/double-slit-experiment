@@ -30,9 +30,6 @@ const (
 	BPFGroupSyscalls = "syscalls"
 )
 
-type BPFReference struct {
-}
-
 // IsPrivileged will check for UID 0
 func IsPrivileged() bool {
 	uid := os.Getuid()

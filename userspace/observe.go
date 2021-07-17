@@ -21,6 +21,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cilium/ebpf"
+
+	"github.com/cilium/ebpf/link"
+
 	"github.com/cilium/ebpf/perf"
 
 	"github.com/kris-nova/logger"
@@ -36,6 +40,7 @@ type Observer struct {
 // ObservationReference will set the reference for
 // various ObservationPoints with the BPF libraries.
 type ObservationReference struct {
+	probe   gen_probeObjects
 	eventCh chan Event
 }
 
@@ -43,9 +48,12 @@ type ObservationReference struct {
 // observer. After calling this function, the observer
 // will be listening to the kernel!
 func NewObserver(points ObservationPoints) *Observer {
+	probe := gen_probeObjects{}
+	loadGen_probeObjects(&probe, nil)
 	observer := &Observer{
 		points: points,
 		reference: ObservationReference{
+			probe:   probe,
 			eventCh: make(chan Event),
 		},
 	}
@@ -79,57 +87,49 @@ func (o *Observer) LogEvents() {
 	}
 }
 
-//func BPF_read_clone() (*perf.Reader, error) {
-//	objs := gen_probeObjects{}
-//	loadGen_probeObjects(&objs, nil)
-//	link.Tracepoint("syscalls", "sys_enter_clone", objs.EnterClone)
-//
-//	if objs.Events == nil {
-//		// We are unable to access events from the kernel, most likely
-//		// this is a permissions error (not running as root/privileged).
-//		return nil, fmt.Errorf("Unable to access events")
-//	}
-//
-//	return perf.NewReader(objs.Events, os.Getpagesize())
-//}
-
 // Start is the main starting point of any configured Observer.
 func (o *Observer) Start() error {
-	probe := gen_probeObjects{}
-	// ----------------------------------------------------------
-	// [Load ObservationPoints]
-	for name, obs := range o.points {
-		logger.Debug("Loading ObservationPoint: %s", name)
-		// Load the BPF components
-		loadGen_probeObjects(&probe, nil)
-		obs.LoadProbe(probe)
+	// [Load Tracepoints]
+	for _, obs := range o.points {
+		obs.SetReference(o.reference)
+		for _, td := range obs.Tracepoints() {
+			logger.Info("Loading tracepoint: %s/%s", td.Group, td.Tracepoint)
+			_, err := link.Tracepoint(td.Group, td.Tracepoint, td.Program)
+			if err != nil {
+				return fmt.Errorf("Error loading tracepoint: %v", err)
+			}
+		}
 	}
 
-	// ----------------------------------------------------------
 	// [Load the global perf ring buffer]
-	reader, err := perf.NewReader(probe.Events, os.Getpagesize())
+	logger.Info("Loading BPF Probe")
+	reader, err := perf.NewReader(o.reference.probe.Events, os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("Unable to start perf reader: %v", err)
 	}
 
-	// ----------------------------------------------------------
-	// [Start observing on each point]
-	for name, obs := range o.points {
-		logger.Debug("Observing ObservationPoint: %s", name)
-		go func() {
-			// Cycle the observation point
-			// across all errors!
-			for {
-				// Holy shit! I did not realize you could
-				// do this in Go!
-				err := obs.ObservationFunc()(reader, o.reference)
-				if err != nil {
-					logger.Warning(err.Error())
-				}
+	// [ Main Processor ]
+	go func() {
+		for {
+			event, err := reader.Read()
+			if err != nil {
+				logger.Warning(err.Error())
 			}
-		}()
-	}
-	// ----------------------------------------------------------
+			if event.LostSamples > 0 {
+				logger.Warning("Dropping kernel samples: %d", event.LostSamples)
+				continue
+			}
+			for _, point := range o.points {
+				go func() {
+					err := point.Event(event)
+					if err != nil {
+						// TODO Handle error
+						//logger.Warning(err.Error())
+					}
+				}()
+			}
+		}
+	}()
 	return nil
 }
 
@@ -139,16 +139,21 @@ func (o *Observer) EventStream() chan Event {
 	return o.reference.eventCh
 }
 
+type TracepointData struct {
+	Group      string
+	Tracepoint string
+	Program    *ebpf.Program
+}
+
 // ObservationPoint is the basic abstraction for all meaningful
 // eBPF abstractions.
+// Examples:
+//    - ContainerStarted
+//    - ProcessExecuted
 type ObservationPoint interface {
-
-	// LoadProbe will pass in the BPF object program to load.
-	LoadProbe(probe gen_probeObjects)
-
-	// ObservationFunc is the main function that is executed for all ObservationPoints
-	// I find it interesting how this model turned out very similar to HTTP APIs.
-	ObservationFunc() func(reader *perf.Reader, reference ObservationReference) error
+	Tracepoints() map[string]TracepointData
+	Event(record perf.Record) error
+	SetReference(reference ObservationReference)
 }
 
 // ObservationPoints are small systems that are expected to "hang".

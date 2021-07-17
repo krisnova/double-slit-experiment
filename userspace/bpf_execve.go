@@ -18,28 +18,24 @@
 package userspace
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"os"
 
-	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 )
 
-func BPF_read_execve() (*perf.Reader, error) {
-	objs := gen_probeObjects{}
-	loadGen_probeObjects(&objs, nil)
-	link.Tracepoint("syscalls", "sys_enter_execve", objs.EnterExecve)
-
-	if objs.Events == nil {
-		// We are unable to access events from the kernel, most likely
-		// this is a permissions error (not running as root/privileged).
-		return nil, fmt.Errorf("Unable to access events")
+func EventExecve(event perf.Record) (*execve_data_t, error) {
+	buffer := bytes.NewBuffer(event.RawSample)
+	var data execve_data_t
+	err := binary.Read(buffer, binary.LittleEndian, &data)
+	if err != nil {
+		return nil, fmt.Errorf("execve() kernel event perf: %v", err)
 	}
-
-	return perf.NewReader(objs.Events, os.Getpagesize())
+	return &data, nil
 }
 
-type exec_data_t struct {
+type execve_data_t struct {
 	Pid    uint32
 	F_name [32]byte
 	Comm   [32]byte

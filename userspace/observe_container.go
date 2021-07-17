@@ -18,71 +18,63 @@
 package userspace
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-
-	"github.com/cilium/ebpf/link"
 
 	"github.com/cilium/ebpf/perf"
 )
 
-func ContainerStarted(reader *perf.Reader, reference ObservationReference) error {
-	for {
-		event, err := reader.Read()
-		if err != nil {
-			return fmt.Errorf("Read event error: %v", err)
-		}
+type ContainerObservationPoint struct {
+	reference ObservationReference
+}
 
-		if event.LostSamples != 0 {
-			return fmt.Errorf("Kernel event ring buffer full, dropped %d events", event.LostSamples)
-		}
-
-		b := bytes.NewBuffer(event.RawSample)
-		var data clone_data_t
-		err = binary.Read(b, binary.LittleEndian, &data)
-		if err != nil {
-			return fmt.Errorf("Kernel perf event error: %v", err)
-		}
-
-		// Send Event over channel
-		p := NewContainerEvent(event, data, "ContainerStarted", 110)
-		reference.eventCh <- p
+func (c *ContainerObservationPoint) Event(record perf.Record) error {
+	cloneData, err := EventClone(record)
+	if err != nil {
+		return err
 	}
+
+	// Filter childpid=0
+	if cloneData.Child_tid == 0 {
+		return nil
+	}
+
+	//logger.Always("CloneEvent")
+	c.reference.eventCh <- NewContainerEvent("ContainerStarted", record.CPU, cloneData)
 	return nil
 }
 
-type ContainerObservationPoint struct {
+func (c *ContainerObservationPoint) Tracepoints() map[string]TracepointData {
+	return map[string]TracepointData{
+		"sys_enter_clone": {
+			Group:      BPFGroupSyscalls,
+			Tracepoint: "sys_enter_clone",
+			Program:    c.reference.probe.EnterExecve,
+		},
+	}
+}
+
+func (c *ContainerObservationPoint) SetReference(reference ObservationReference) {
+	c.reference = reference
 }
 
 func NewContainerObservationPoint() *ContainerObservationPoint {
 	return &ContainerObservationPoint{}
 }
 
-func (c ContainerObservationPoint) LoadProbe(probe gen_probeObjects) {
-	link.Tracepoint(BPFGroupSyscalls, "sys_enter_clone", probe.EnterClone)
-}
-
-func (c ContainerObservationPoint) ObservationFunc() func(reader *perf.Reader, reference ObservationReference) error {
-	return ContainerStarted
-}
-
 type ContainerEvent struct {
-	Event      perf.Record  `json:"Event"`
-	EventCode  int          `json:"Code,omitempty"`
-	EventName  string       `json:"Name"`
-	data       clone_data_t `json:"Data"`
-	ParentPid  int          `json:"ParentPid"`
-	ChildPid   int          `json:"ChildPid"`
-	CloneFlags uint         `json: "CloneFlags"`
+	CPU        int           `json:"CPU"`
+	EventName  string        `json:"Name"`
+	data       *clone_data_t `json:"Data"`
+	ParentPid  int           `json:"ParentPid"`
+	ChildPid   int           `json:"ChildPid"`
+	CloneFlags uint          `json:"CloneFlags"`
 }
 
-func NewContainerEvent(event perf.Record, cloneData clone_data_t, name string, code int) *ContainerEvent {
+func NewContainerEvent(name string, cpu int, cloneData *clone_data_t) *ContainerEvent {
 	return &ContainerEvent{
-		Event:      event,
+		CPU:        cpu,
 		data:       cloneData,
-		EventCode:  code,
 		EventName:  name,
 		ParentPid:  int(cloneData.Parent_tid),
 		ChildPid:   int(cloneData.Child_tid),
@@ -95,11 +87,7 @@ func (e *ContainerEvent) JSON() ([]byte, error) {
 }
 
 func (e *ContainerEvent) String() string {
-	return fmt.Sprintf("Parent(%d) -> Child(%d) [%d]", e.data.Parent_tid, e.data.Child_tid, e.data.Clone_flags)
-}
-
-func (e *ContainerEvent) Code() int {
-	return e.EventCode
+	return fmt.Sprintf("[CPU %d] Parent(%d) -> Child(%d) [%d]", e.CPU, e.data.Parent_tid, e.data.Child_tid, e.data.Clone_flags)
 }
 
 func (e *ContainerEvent) Name() string {
