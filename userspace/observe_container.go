@@ -110,45 +110,37 @@ func FilterChild0(d *clone_data_t) bool {
 	return false
 }
 
-// These are copied from <linux/sched.h> on a 5.12.12 kernel.
-//
-// These SHOULD be reliable, but it would be best to access
-// them directly at compile time based on the kernel of the system.
 const (
-	CEMPTY               uint64 = 0x00000000 /* empty flag used for masking */
-	CSIGNAL              uint64 = 0x000000ff /* signal mask to be sent at exit */
-	CLONE_VM             uint64 = 0x00000100 /* set if VM shared between processes */
-	CLONE_FS             uint64 = 0x00000200 /* set if fs info shared between processes */
-	CLONE_FILES          uint64 = 0x00000400 /* set if open files shared between processes */
-	CLONE_SIGHAND        uint64 = 0x00000800 /* set if signal handlers and blocked signals shared */
-	CLONE_PIDFD          uint64 = 0x00001000 /* set if a pidfd should be placed in parent */
-	CLONE_PTRACE         uint64 = 0x00002000 /* set if we want to let tracing continue on the child too */
-	CLONE_VFORK          uint64 = 0x00004000 /* set if the parent wants the child to wake it up on mm_release */
-	CLONE_PARENT         uint64 = 0x00008000 /* set if we want to have the same parent as the cloner */
-	CLONE_THREAD         uint64 = 0x00010000 /* Same thread group? */
-	CLONE_NEWNS          uint64 = 0x00020000 /* New mount namespace group */
-	CLONE_SYSVSEM        uint64 = 0x00040000 /* share system V SEM_UNDO semantics */
-	CLONE_SETTLS         uint64 = 0x00080000 /* create a new TLS for the child */
-	CLONE_PARENT_SETTID  uint64 = 0x00100000 /* set the TID in the parent */
-	CLONE_CHILD_CLEARTID uint64 = 0x00200000 /* clear the TID in the child */
-	CLONE_DETACHED       uint64 = 0x00400000 /* Unused, ignored */
-	CLONE_UNTRACED       uint64 = 0x00800000 /* set if the tracing process can't force CLONE_PTRACE on this clone */
-	CLONE_CHILD_SETTID   uint64 = 0x01000000 /* set the TID in the child */
-	CLONE_NEWCGROUP      uint64 = 0x02000000 /* New cgroup namespace */
-	CLONE_NEWUTS         uint64 = 0x04000000 /* New utsname namespace */
-	CLONE_NEWIPC         uint64 = 0x08000000 /* New ipc namespace */
-	CLONE_NEWUSER        uint64 = 0x10000000 /* New user namespace */
-	CLONE_NEWPID         uint64 = 0x20000000 /* New pid namespace */
-	CLONE_NEWNET         uint64 = 0x40000000 /* New network namespace */
-	CLONE_IO             uint64 = 0x80000000 /* Clone io context */
+	CEMPTY               uint64 = 0x00000000             /* empty flag used for masking */
+	CSIGNAL              uint64 = C.CSIGNAL              /* signal mask to be sent at exit */
+	CLONE_VM             uint64 = C.CLONE_VM             /* set if VM shared between processes */
+	CLONE_FS             uint64 = C.CLONE_FS             /* set if fs info shared between processes */
+	CLONE_FILES          uint64 = C.CLONE_FILES          /* set if open files shared between processes */
+	CLONE_SIGHAND        uint64 = C.CLONE_SIGHAND        /* set if signal handlers and blocked signals shared */
+	CLONE_PIDFD          uint64 = C.CLONE_PIDFD          /* set if a pidfd should be placed in parent */
+	CLONE_PTRACE         uint64 = C.CLONE_PTRACE         /* set if we want to let tracing continue on the child too */
+	CLONE_VFORK          uint64 = C.CLONE_VFORK          /* set if the parent wants the child to wake it up on mm_release */
+	CLONE_PARENT         uint64 = C.CLONE_PARENT         /* set if we want to have the same parent as the cloner */
+	CLONE_THREAD         uint64 = C.CLONE_THREAD         /* Same thread group? */
+	CLONE_NEWNS          uint64 = C.CLONE_NEWNS          /* New mount namespace group */
+	CLONE_SYSVSEM        uint64 = C.CLONE_SYSVSEM        /* share system V SEM_UNDO semantics */
+	CLONE_SETTLS         uint64 = C.CLONE_SETTLS         /* create a new TLS for the child */
+	CLONE_PARENT_SETTID  uint64 = C.CLONE_PARENT_SETTID  /* set the TID in the parent */
+	CLONE_CHILD_CLEARTID uint64 = C.CLONE_CHILD_CLEARTID /* clear the TID in the child */
+	CLONE_DETACHED       uint64 = C.CLONE_DETACHED       /* Unused, ignored */
+	CLONE_UNTRACED       uint64 = C.CLONE_UNTRACED       /* set if the tracing process can't force CLONE_PTRACE on this clone */
+	CLONE_CHILD_SETTID   uint64 = C.CLONE_CHILD_SETTID   /* set the TID in the child */
+	CLONE_NEWCGROUP      uint64 = C.CLONE_NEWCGROUP      /* New cgroup namespace */
+	CLONE_NEWUTS         uint64 = C.CLONE_NEWUTS         /* New utsname namespace */
+	CLONE_NEWIPC         uint64 = C.CLONE_NEWIPC         /* New ipc namespace */
+	CLONE_NEWUSER        uint64 = C.CLONE_NEWUSER        /* New user namespace */
+	CLONE_NEWPID         uint64 = C.CLONE_NEWPID         /* New pid namespace */
+	CLONE_NEWNET         uint64 = C.CLONE_NEWNET         /* New network namespace */
+	CLONE_IO             uint64 = C.CLONE_IO             /* Clone io context */
 )
 
 // FilterCloneFlagMask will default to an empty mask
 //
-// Warning: This feature uses constants that are defined
-// in the go code above. There is no guarantee these
-// still match, or are complete for the current kernel
-// this code is compiled against. Use with caution.
 var FilterCloneFlagMask uint64 = CEMPTY
 
 // FilterCloneFlagsByMask will filter against
