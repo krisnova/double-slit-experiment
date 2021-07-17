@@ -323,9 +323,9 @@ func FilterCloneCLONE_UNTRACED(d *clone_data_t) bool {
 }
 
 // FilterCloneCLONE_CHILD_SETTID      0x01000000      /* set the TID in the child */
-func FilterCloneCLONE_SETTID(d *clone_data_t) bool {
+func FilterCloneCLONE_CHILD_SETTID(d *clone_data_t) bool {
 	var flag uint64
-	flag = C.CLONE_PARENT_SETTID
+	flag = C.CLONE_CHILD_SETTID
 	if d.Clone_flags&flag != 0 {
 		return true
 	}
