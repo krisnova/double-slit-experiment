@@ -25,23 +25,24 @@ import (
 )
 
 type ProcessObservationPoint struct {
-	reference ObservationReference
+	reference     ObservationReference
+	execveFilters []FilterExecve
 }
 
 func (p *ProcessObservationPoint) Event(record perf.Record) error {
-	execData, err := EventExecve(record)
+	data, err := EventExecve(record)
 	if err != nil {
 		return err
 	}
 
-	// Filter filename=""
-	fileName := BytesToString32(execData.F_name)
-	if fileName == "" {
-		return nil
+	for _, filt := range p.execveFilters {
+		if filt(data) {
+			return nil
+		}
 	}
 
 	//logger.Always("ProcessEvent")
-	p.reference.eventCh <- NewProcessEvent("ProcessExecuted", record.CPU, execData)
+	p.reference.eventCh <- NewProcessEvent("ProcessExecuted", record.CPU, data)
 	return nil
 }
 
@@ -59,8 +60,10 @@ func (p *ProcessObservationPoint) SetReference(reference ObservationReference) {
 	p.reference = reference
 }
 
-func NewProcessObservationPoint() *ProcessObservationPoint {
-	return &ProcessObservationPoint{}
+func NewProcessObservationPoint(execveFilters []FilterExecve) *ProcessObservationPoint {
+	return &ProcessObservationPoint{
+		execveFilters: execveFilters,
+	}
 }
 
 type ProcessEvent struct {
@@ -92,4 +95,14 @@ func (p *ProcessEvent) String() string {
 
 func (p *ProcessEvent) Name() string {
 	return p.EventName
+}
+
+type FilterExecve func(d *execve_data_t) bool
+
+func FilterEmptyFilename(d *execve_data_t) bool {
+	filename := BytesToString32(d.F_name)
+	if filename == "" {
+		return true
+	}
+	return false
 }

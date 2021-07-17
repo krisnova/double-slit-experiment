@@ -89,6 +89,7 @@ func (o *Observer) LogEvents() {
 
 // Start is the main starting point of any configured Observer.
 func (o *Observer) Start() error {
+
 	// [Load Tracepoints]
 	for _, obs := range o.points {
 		obs.SetReference(o.reference)
@@ -156,7 +157,4 @@ type ObservationPoint interface {
 	SetReference(reference ObservationReference)
 }
 
-// ObservationPoints are small systems that are expected to "hang".
-// These systems should return generic Event{}'s when an event occurs.
-// These systems should error, and be restarted on error.
 type ObservationPoints map[string]ObservationPoint

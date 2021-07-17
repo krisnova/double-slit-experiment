@@ -18,8 +18,15 @@
 package userspace
 
 func DefaultProfile() ObservationPoints {
+	FilterCloneFlagMask = CEMPTY
 	return ObservationPoints{
-		"ProcessExecuted":  NewProcessObservationPoint(),
-		"ContainerStarted": NewContainerObservationPoint(),
+		"ProcessExecuted": NewProcessObservationPoint([]FilterExecve{
+			FilterEmptyFilename,
+		}),
+		"ContainerStarted": NewContainerObservationPoint([]FilterClone{
+			FilterChild0,
+			FilterCloneCLONE_VM,
+			FilterCloneFlagsByMask,
+		}),
 	}
 }

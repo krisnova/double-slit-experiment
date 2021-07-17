@@ -45,7 +45,7 @@ clean:
 	-rm probe/vmlinux.h
 
 $(executable): cmd/main.go userspace/gen_probe_bpfel.go
-	CGO_ENABLED=0 go build -o $(executable) cmd/main.go
+	CGO_ENABLED=1 go build -o $(executable) cmd/main.go
 
 probe/vmlinux.h:
 	bpftool btf dump file /sys/kernel/btf/vmlinux format c > probe/vmlinux.h
