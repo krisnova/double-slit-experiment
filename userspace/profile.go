@@ -30,7 +30,7 @@ func ProfileDefault() ObservationPoints {
 			FilterSocketProtocolNotZero,
 		}),
 		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{
-			FilterSignalGreaterZero,
+			FilterSignalCodeNotZero,
 		}),
 		"ProcessExecuted": NewProcessObservationPoint([]FilterExecve{
 			FilterEmptyFilename,

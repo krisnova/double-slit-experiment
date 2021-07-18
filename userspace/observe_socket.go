@@ -114,7 +114,7 @@ func (p *SocketEvent) Name() string {
 type FilterSocket func(d *inet_sock_data_t) bool
 
 func FilterSocketProtocolNotZero(d *inet_sock_data_t) bool {
-	if d.Protocol == 0 {
+	if d.Protocol != 0 {
 		return true
 	}
 	return false

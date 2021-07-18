@@ -103,8 +103,8 @@ func (p *SignalEvent) Name() string {
 
 type FilterSignal func(d *signal_data_t) bool
 
-func FilterSignalGreaterZero(d *signal_data_t) bool {
-	if d.Code > 0 {
+func FilterSignalCodeNotZero(d *signal_data_t) bool {
+	if d.Code != 0 {
 		return true
 	}
 	return false
