@@ -26,6 +26,9 @@ func ProfileSignalsOnly() ObservationPoints {
 func ProfileDefault() ObservationPoints {
 	FilterCloneFlagMask = CEMPTY
 	return ObservationPoints{
+		"SocketState": NewSocketObservationPoint([]FilterSocket{
+			FilterSocketProtocolNotZero,
+		}),
 		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{
 			FilterSignalGreaterZero,
 		}),

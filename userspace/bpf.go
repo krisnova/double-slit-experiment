@@ -23,12 +23,15 @@ import (
 	"fmt"
 	"os"
 
+	"inet.af/netaddr"
+
 	"golang.org/x/sys/unix"
 )
 
 const (
 	BPFGroupSyscalls = "syscalls"
 	BPFGroupSignal   = "signal"
+	BPFGroupSock     = "sock"
 )
 
 // IsPrivileged will check for UID 0
@@ -61,10 +64,27 @@ func BytesToString32(bytes [32]byte) string {
 	var str string
 	for _, b := range bytes {
 		if b == 0 {
-			// How we are dynamically resizing onto a string in Go
 			continue
 		}
 		str = fmt.Sprintf("%s%s", str, string(b))
 	}
 	return str
+}
+
+func IPV4(bytes [4]byte) string {
+	var ip string
+	for _, oct := range bytes {
+		oStr := fmt.Sprintf("%d", oct)
+		if ip == "" {
+			ip = oStr
+		} else {
+			ip = fmt.Sprintf("%s.%s", ip, oStr)
+		}
+	}
+	return ip
+}
+
+func IPV6(bytes [16]byte) string {
+	i := netaddr.IPv6Raw(bytes)
+	return i.String()
 }

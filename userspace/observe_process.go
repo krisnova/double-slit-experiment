@@ -78,6 +78,7 @@ type ProcessEvent struct {
 func NewProcessEvent(name string, cpu int, execData *execve_data_t) *ProcessEvent {
 	return &ProcessEvent{
 		data:      execData,
+		CPU:       cpu,
 		EventName: name,
 		Filename:  BytesToString32(execData.Filename),
 		Comm:      BytesToString32(execData.Comm),

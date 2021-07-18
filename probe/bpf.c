@@ -25,16 +25,91 @@
 
 #include "vmlinux.h"
 #include "bpf.h"
+#include "string.h"
 #include <bpf/bpf_helpers.h>
-
-
-
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
     __uint(key_size, sizeof(__u32));
     __uint(value_size, sizeof(__u32));
 } events SEC(".maps");
+
+
+// ----------------------------------------------------------------------------
+
+struct inet_sock_data_t {
+    int oldstate;
+    int newstate;
+    __u16 sport;
+    __u16 dport;
+    __u16 family;
+    __u16 protocol;
+    __u8 saddr[4];
+    __u8 daddr[4];
+    __u8 saddr_v6[16];
+    __u8 daddr_v6[16];
+};
+
+struct inet_sock_entry_args_t {
+    __u64 _unused;
+    __u64 _unused2;
+    int oldstate;
+    int newstate;
+    __u16 sport;
+    __u16 dport;
+    __u16 family;
+    __u16 protocol;
+    __u8 saddr[4];
+    __u8 daddr[4];
+    __u8 saddr_v6[16];
+    __u8 daddr_v6[16];
+};
+
+/**
+ *
+name: inet_sock_set_state
+ID: 1344
+format:
+        field:unsigned short common_type;       offset:0;       size:2; signed:0;
+        field:unsigned char common_flags;       offset:2;       size:1; signed:0;
+        field:unsigned char common_preempt_count;       offset:3;       size:1;signed:0;
+        field:int common_pid;   offset:4;       size:4; signed:1;
+
+        field:const void * skaddr;      offset:8;       size:8; signed:0;
+        field:int oldstate;     offset:16;      size:4; signed:1;
+        field:int newstate;     offset:20;      size:4; signed:1;
+        field:__u16 sport;      offset:24;      size:2; signed:0;
+        field:__u16 dport;      offset:26;      size:2; signed:0;
+        field:__u16 family;     offset:28;      size:2; signed:0;
+        field:__u16 protocol;   offset:30;      size:2; signed:0;
+        field:__u8 saddr[4];    offset:32;      size:4; signed:0;
+        field:__u8 daddr[4];    offset:36;      size:4; signed:0;
+        field:__u8 saddr_v6[16];        offset:40;      size:16;        signed:0;
+        field:__u8 daddr_v6[16];        offset:56;      size:16;        signed:0;
+
+print fmt: "family=%s protocol=%s sport=%hu dport=%hu saddr=%pI4 daddr=%pI4 saddrv6=%pI6c daddrv6=%pI6c oldstate=%s newstate=%s", __print_symbolic(REC->family, { 2, "AF_INET" }, { 10, "AF_INET6" }), __print_symbolic(REC->protocol, { 6, "IPPROTO_TCP" }, { 33, "IPPROTO_DCCP" }, { 132, "IPPROTO_SCTP" }, { 262, "IPPROTO_MPTCP" }), REC->sport, REC->dport, REC->saddr, REC->daddr, REC->saddr_v6, REC->daddr_v6, __print_symbolic(REC->oldstate, { 1, "TCP_ESTABLISHED" }, { 2, "TCP_SYN_SENT" }, { 3, "TCP_SYN_RECV" }, { 4, "TCP_FIN_WAIT1" }, { 5, "TCP_FIN_WAIT2" }, { 6, "TCP_TIME_WAIT" }, { 7, "TCP_CLOSE" }, { 8, "TCP_CLOSE_WAIT" }, { 9, "TCP_LAST_ACK" }, { 10, "TCP_LISTEN" }, { 11, "TCP_CLOSING" }, { 12, "TCP_NEW_SYN_RECV" }), __print_symbolic(REC->newstate, { 1, "TCP_ESTABLISHED" }, { 2, "TCP_SYN_SENT" }, { 3, "TCP_SYN_RECV" }, { 4, "TCP_FIN_WAIT1" }, { 5, "TCP_FIN_WAIT2" }, { 6, "TCP_TIME_WAIT" }, { 7, "TCP_CLOSE" }, { 8, "TCP_CLOSE_WAIT" }, { 9, "TCP_LAST_ACK" }, { 10, "TCP_LISTEN" }, { 11, "TCP_CLOSING" }, { 12, "TCP_NEW_SYN_RECV" })
+ */
+SEC("tracepoint/sock/inet_sock_set_state")
+int inet_sock_set_state(struct inet_sock_entry_args_t  *args){
+    struct inet_sock_data_t data = {};
+
+    data.oldstate = args->oldstate;
+    data.newstate = args->newstate;
+    data.sport = args->sport;
+    data.dport = args->dport;
+    data.family = args->family;
+    data.protocol = args->protocol;
+    memcpy(data.saddr, args->saddr, sizeof(args->saddr));
+    memcpy(data.daddr, args->daddr, sizeof(args->daddr));
+    memcpy(data.saddr_v6, args->saddr_v6, sizeof(args->saddr_v6));
+    memcpy(data.daddr_v6, args->daddr_v6, sizeof(args->daddr_v6));
+
+
+    // Send out on the perf event map
+    bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &data, sizeof(data));
+    if (DEBUG) bpf_printk("---tracepoint/sock/inet_sock_set_state---");
+    return 0;
+}
 
 
 struct signal_deliver_data_t {
@@ -56,7 +131,8 @@ struct signal_deliver_entry_args_t {
 };
 
 /**
- * name: signal_deliver
+ *
+name: signal_deliver
 ID: 183
 format:
         field:unsigned short common_type;       offset:0;       size:2; signed:0;
@@ -109,7 +185,8 @@ struct clone_entry_args_t {
 };
 
 /**
- * name: sys_enter_clone
+ *
+name: sys_enter_clone
 ID: 122
 format:
         field:unsigned short common_type;       offset:0;       size:2; signed:0;
@@ -171,7 +248,8 @@ struct execve_entry_args_t {
 };
 
 /**
- * name: sys_enter_execve
+ *
+name: sys_enter_execve
 ID: 710
 format:
         field:unsigned short common_type;       offset:0;       size:2; signed:0;

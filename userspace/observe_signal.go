@@ -80,6 +80,7 @@ func NewSignalEvent(name string, cpu int, signalData *signal_data_t) *SignalEven
 	return &SignalEvent{
 		data:      signalData,
 		EventName: name,
+		CPU:       cpu,
 		Signal:    int(signalData.Signal),
 		Errno:     int(signalData.Errno),
 		Code:      int(signalData.Code),
