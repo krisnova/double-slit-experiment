@@ -1,4 +1,4 @@
-# Runtime Linux and Container Telemetry 
+# Linux Telemetry
 
 **The Double Slit Experiment**
 
@@ -16,7 +16,12 @@ The library will aggregate events from the Linux kernel at runtime using [eBPF](
 
 The abstractions are `ObservationPoint`'s. These are aggregate systems in Go built around [tracepoints](https://www.kernel.org/doc/html/latest/trace/tracepoints.html) in the Linux kernel.
 
-Each `ObservationPoint` is defined by a function name, and each implements the `Event` interface.
+ - ProcessExecuted _An event for every process executed on the system_
+ - ContainerEvent _An event for any new container (docker, kubernetes, etc) started on the system_
+ - SocketStateChange _An event for any change in a socket on the system_
+ - SignalDelivered _An event for every Linux signal delivered to a process on the system_
+
+Each `ObservationPoint` returns one or more events that each implement the `Event` interface.
 
 ```go 
 type Event interface {
@@ -26,17 +31,4 @@ type Event interface {
 	Name() string
 }
 ```
-
-### ProcessExecuted Observation Point
-
-The library can send an event whenever a process is executed globally on a Linux system.
-
-```go
-// ProcessExecuted will aggregate tracepoint data from the kernel
-// and send a generic Event back over a channel.
-func ProcessExecuted(ch chan Event) {
-	ch <- evt // Send events back out over the channel
-}
-```
-
 
