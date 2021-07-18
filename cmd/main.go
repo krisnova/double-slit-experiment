@@ -94,7 +94,7 @@ func main() {
 
 func RunDSE() error {
 	commandGlobalChecks()
-	observer := userspace.NewObserver(userspace.ProfileSignalsOnly())
+	observer := userspace.NewObserver(userspace.ProfileDefault())
 	err := observer.Start()
 	if err != nil {
 		return err

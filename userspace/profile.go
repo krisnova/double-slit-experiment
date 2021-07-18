@@ -26,7 +26,9 @@ func ProfileSignalsOnly() ObservationPoints {
 func ProfileDefault() ObservationPoints {
 	FilterCloneFlagMask = CEMPTY
 	return ObservationPoints{
-		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{}),
+		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{
+			FilterSignalGreaterZero,
+		}),
 		"ProcessExecuted": NewProcessObservationPoint([]FilterExecve{
 			FilterEmptyFilename,
 		}),
@@ -40,19 +42,21 @@ func ProfileDefault() ObservationPoints {
 			// syscall. We can filter those out now.
 			FilterCloneCLONE_VFORK,
 
-			//FilterCloneCLONE_DETACHED,
 			//FilterCloneCLONE_NEWIPC,
 			//FilterCloneCLONE_NEWCGROUP,
 			//FilterCloneCLONE_NEWNET,
 			//FilterCloneCLONE_NEWNS,
 			//FilterCloneCLONE_NEWPID,
 			//FilterCloneCLONE_NEWUSER,
-			//FilterCloneCLONE_VM,
-			//FilterCloneCLONE_FILES,
-			//FilterCloneCLONE_CHILD_CLEARTID,
-			//FilterCloneCLONE_PARENT,
-			//FilterCloneCLONE_PARENT_SETTID,
+
+			FilterCloneCLONE_VM,
+			FilterCloneCLONE_FILES,
+			FilterCloneCLONE_CHILD_CLEARTID,
+			FilterCloneCLONE_PARENT,
+			FilterCloneCLONE_PARENT_SETTID,
+			FilterCloneCLONE_DETACHED,
 			//FilterCloneCLONE_PTRACE,
+
 			//FilterCloneFlagsByMask,
 		}),
 	}

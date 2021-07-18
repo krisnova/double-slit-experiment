@@ -159,13 +159,24 @@ func eventLoop(sigCh chan os.Signal, reader *perf.Reader, points ObservationPoin
 			logger.Warning("Dropping kernel samples: %d", event.LostSamples)
 			continue
 		}
+		errCh := make(chan error)
 		for _, point := range points {
 			go func() {
-				err := point.Event(event)
-				if err != nil {
-					logger.Warning(err.Error())
-				}
+				errCh <- point.Event(event)
 			}()
+		}
+		var foundErrors []error
+		for i := 0; i < len(points); i++ {
+			r := <-errCh
+			if r != nil {
+				foundErrors = append(foundErrors)
+			}
+		}
+		if len(foundErrors) == len(points) {
+			logger.Warning("Unable to read binary event:")
+			for _, err := range foundErrors {
+				logger.Warning(err.Error())
+			}
 		}
 	}
 }
