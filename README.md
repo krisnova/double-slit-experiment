@@ -24,10 +24,11 @@ The abstractions are `ObservationPoint`'s. These are aggregate systems in Go bui
 Each `ObservationPoint` returns one or more events that each implement the `Event` interface.
 
 ```go 
+// Event is a generic event for all
+// ObservationPoint systems.
 type Event interface {
 	JSON() ([]byte, error)
 	String() string
-	Code() int
 	Name() string
 }
 ```
