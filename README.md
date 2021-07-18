@@ -8,6 +8,23 @@ The thesis behind the project is that meaningful well thought out telemetry coul
 
 ---
 
+# Install
+
+```bash 
+git clone git@github.com:kris-nova/double-slit-experiment.git
+cd double-slit-experiment
+make
+./dse --help
+```
+
+# Running
+
+```bash
+./dse run | uniq
+```
+
+**Note**: See `userspace/profile.go` for filters and configuration for now.
+
 # About
 
 This is a library of abstractions build around Go and eBPF code. 
