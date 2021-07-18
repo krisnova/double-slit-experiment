@@ -24,6 +24,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/kris-nova/logger"
+
+	"github.com/kris-nova/double-slit-experiment/system"
+
 	"github.com/cilium/ebpf/perf"
 )
 
@@ -44,8 +48,21 @@ func (c *ContainerObservationPoint) Event(record perf.Record) error {
 		}
 	}
 
+	// We have a container event that has made it through the filters.
+
+	// Deliberate design: We ignore errors if we can't lookup the process.
+	// There is a non-zero chance the process has terminated.
+	parentProc, err := system.ProcPIDLookup(int(data.Parent_tid))
+	if err != nil {
+		logger.Debug(err.Error())
+	}
+	childProc, err := system.ProcPIDLookup(int(data.Child_tid))
+	if err != nil {
+		logger.Debug(err.Error())
+	}
+
 	//logger.Always("CloneEvent")
-	c.reference.eventCh <- NewContainerEvent("ContainerStarted", record.CPU, data)
+	c.reference.eventCh <- NewContainerEvent("Container", record.CPU, data, parentProc, childProc)
 	return nil
 }
 
@@ -70,24 +87,30 @@ func NewContainerObservationPoint(cloneFilters []FilterClone) *ContainerObservat
 }
 
 type ContainerEvent struct {
-	CPU        int           `json:"CPU"`
-	EventName  string        `json:"Name"`
-	data       *clone_data_t `json:"Data"`
-	ParentPid  int           `json:"ParentPid"`
-	ChildPid   int           `json:"ChildPid"`
-	CloneFlags uint          `json:"CloneFlags"`
-	TLS        uint          `json:"TLS"`
+	CPU              int             `json:"CPU"`
+	EventName        string          `json:"Name"`
+	data             *clone_data_t   `json:"Data"`
+	ParentPid        int             `json:"ParentPid"`
+	ParentProc       *system.Process `json:"ParentProc"`
+	ChildPid         int             `json:"ChildPid"`
+	ChildProc        *system.Process `json:"ChildProc"`
+	CloneFlags       uint            `json:"CloneFlags"`
+	CloneFlagsByName []string        `json:"CloneFlagsByName"`
+	TLS              uint            `json:"TLS"`
 }
 
-func NewContainerEvent(name string, cpu int, cloneData *clone_data_t) *ContainerEvent {
+func NewContainerEvent(name string, cpu int, cloneData *clone_data_t, parentProc, childProc *system.Process) *ContainerEvent {
 	return &ContainerEvent{
-		CPU:        cpu,
-		data:       cloneData,
-		EventName:  name,
-		ParentPid:  int(cloneData.Parent_tid),
-		ChildPid:   int(cloneData.Child_tid),
-		CloneFlags: uint(cloneData.Clone_flags),
-		TLS:        uint(cloneData.TLS),
+		CPU:              cpu,
+		data:             cloneData,
+		EventName:        name,
+		ParentPid:        int(cloneData.Parent_tid),
+		ParentProc:       parentProc,
+		ChildPid:         int(cloneData.Child_tid),
+		ChildProc:        childProc,
+		CloneFlags:       uint(cloneData.Clone_flags),
+		CloneFlagsByName: CloneFlagsByName(cloneData.Clone_flags),
+		TLS:              uint(cloneData.TLS),
 	}
 }
 
@@ -140,6 +163,96 @@ const (
 	CLONE_NEWNET         uint64 = C.CLONE_NEWNET         /* New network namespace */
 	CLONE_IO             uint64 = C.CLONE_IO             /* Clone io context */
 )
+
+func CloneFlagsByName(flags uint64) []string {
+	var nameFlags []string
+	if flags&CSIGNAL == 0 {
+		nameFlags = append(nameFlags, "CSIGNAL")
+	}
+	if flags&CLONE_VM == 0 {
+		nameFlags = append(nameFlags, "CLONE_VM")
+	}
+	if flags&CLONE_FILES == 0 {
+		nameFlags = append(nameFlags, "CLONE_FILES")
+	}
+	if flags&CLONE_SIGHAND == 0 {
+		nameFlags = append(nameFlags, "CLONE_SIGHAND")
+	}
+	if flags&CLONE_SIGHAND == 0 {
+		nameFlags = append(nameFlags, "CLONE_SIGHAND")
+	}
+	if flags&CLONE_PIDFD == 0 {
+		nameFlags = append(nameFlags, "CLONE_PIDFD")
+	}
+	if flags&CLONE_PTRACE == 0 {
+		nameFlags = append(nameFlags, "CLONE_PTRACE")
+	}
+	if flags&CLONE_VFORK == 0 {
+		nameFlags = append(nameFlags, "CLONE_VFORK")
+	}
+	if flags&CLONE_PARENT == 0 {
+		nameFlags = append(nameFlags, "CLONE_PARENT")
+	}
+	if flags&CLONE_THREAD == 0 {
+		nameFlags = append(nameFlags, "CLONE_THREAD")
+	}
+	if flags&CLONE_NEWNS == 0 {
+		nameFlags = append(nameFlags, "CLONE_NEWNS")
+	}
+	if flags&CLONE_SYSVSEM == 0 {
+		nameFlags = append(nameFlags, "CLONE_SYSVSEM")
+	}
+	if flags&CLONE_PIDFD == 0 {
+		nameFlags = append(nameFlags, "CLONE_PIDFD")
+	}
+	if flags&CLONE_SETTLS == 0 {
+		nameFlags = append(nameFlags, "CLONE_SETTLS")
+	}
+	if flags&CLONE_PARENT_SETTID == 0 {
+		nameFlags = append(nameFlags, "CLONE_PARENT_SETTID")
+	}
+	if flags&CLONE_CHILD_CLEARTID == 0 {
+		nameFlags = append(nameFlags, "CLONE_CLEARTID")
+	}
+	if flags&CLONE_DETACHED == 0 {
+		nameFlags = append(nameFlags, "CLONE_DETACHED")
+	}
+	if flags&CLONE_UNTRACED == 0 {
+		nameFlags = append(nameFlags, "CLONE_UNTRACED")
+	}
+	if flags&CLONE_CHILD_SETTID == 0 {
+		nameFlags = append(nameFlags, "CLONE_CHILD_SETTID")
+	}
+	if flags&CLONE_NEWCGROUP == 0 {
+		nameFlags = append(nameFlags, "CLONE_NEWCGROUP")
+	}
+	if flags&CLONE_NEWUTS == 0 {
+		nameFlags = append(nameFlags, "CLONE_NEWUTS")
+	}
+	if flags&CLONE_NEWIPC == 0 {
+		nameFlags = append(nameFlags, "CLONE_NEWIPC")
+	}
+	if flags&CLONE_NEWUSER == 0 {
+		nameFlags = append(nameFlags, "CLONE_NEWUSER")
+	}
+	if flags&CLONE_NEWPID == 0 {
+		nameFlags = append(nameFlags, "CLONE_NEWPID")
+	}
+	if flags&CLONE_NEWNET == 0 {
+		nameFlags = append(nameFlags, "CLONE_NEWNET")
+	}
+	//if flags&CLONE_TO == 0 {
+	//	nameFlags = append(nameFlags, "CLONE_TO")
+	//}
+	return nameFlags
+}
+
+func FilterCloneFlagsNonZero(d *clone_data_t) bool {
+	if d.Clone_flags == 0 {
+		return true
+	}
+	return false
+}
 
 // FilterCloneFlagMask will default to an empty mask
 //

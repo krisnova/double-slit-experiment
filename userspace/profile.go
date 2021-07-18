@@ -37,13 +37,16 @@ func ProfileDefault() ObservationPoints {
 		}),
 		"ContainerStarted": NewContainerObservationPoint([]FilterClone{
 
+			// Only show clones that are non zero
+			FilterCloneFlagsNonZero,
+
 			// Filter out all clone events where the child pid
 			// is set to 0.
 			FilterChild0,
 
 			// Sometimes bash will fork, but use the clone()
 			// syscall. We can filter those out now.
-			FilterCloneCLONE_VFORK,
+			//FilterCloneCLONE_VFORK,
 
 			//FilterCloneCLONE_NEWIPC,
 			//FilterCloneCLONE_NEWCGROUP,
@@ -52,12 +55,12 @@ func ProfileDefault() ObservationPoints {
 			//FilterCloneCLONE_NEWPID,
 			//FilterCloneCLONE_NEWUSER,
 
-			FilterCloneCLONE_VM,
-			FilterCloneCLONE_FILES,
-			FilterCloneCLONE_CHILD_CLEARTID,
-			FilterCloneCLONE_PARENT,
-			FilterCloneCLONE_PARENT_SETTID,
-			FilterCloneCLONE_DETACHED,
+			//FilterCloneCLONE_VM,
+			//FilterCloneCLONE_FILES,
+			//FilterCloneCLONE_CHILD_CLEARTID,
+			//FilterCloneCLONE_PARENT,
+			//FilterCloneCLONE_PARENT_SETTID,
+			//FilterCloneCLONE_DETACHED,
 			//FilterCloneCLONE_PTRACE,
 
 			//FilterCloneFlagsByMask,
