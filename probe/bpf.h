@@ -30,4 +30,6 @@
 #define DATA_SIZE_32 32
 #define DATA_SIZE_64 64
 
+#define DEBUG 1
+
 #endif

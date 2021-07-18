@@ -28,6 +28,8 @@
 #include <bpf/bpf_helpers.h>
 
 
+
+
 struct {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
     __uint(key_size, sizeof(__u32));
@@ -39,8 +41,8 @@ struct signal_deliver_data_t {
     int signal;
     int errno;
     int code;
-    unsigned long sa_handler;
-    unsigned long sa_flags;
+    __u64 sa_handler;
+    __u64 sa_flags;
 };
 
 struct signal_deliver_entry_args_t {
@@ -77,13 +79,13 @@ int signal_deliver(struct signal_deliver_entry_args_t  *args){
     signal_data.signal = args->signal;
     signal_data.errno = args->errno;
     signal_data.code = args->code;
-    //signal_data.sa_flags = args->sa_flags;
     signal_data.sa_handler = args->sa_handler;
+    //bpf_probe_read(&signal_data.sa_flags, sizeof(args->sa_flags), &args->sa_flags);
 
-    bpf_printk("---tracepoint/signal/signal_deliver---");
 
     // Send out on the perf event map
     bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &signal_data, sizeof(signal_data));
+    if (DEBUG) bpf_printk("---tracepoint/signal/signal_deliver---");
     return 0;
 }
 
@@ -92,6 +94,7 @@ struct clone_data_t {
     __u32 parent_tid;
     __u32 child_tid;
     __u64 clone_flags;
+    __u64 tls;
 };
 
 struct clone_entry_args_t {
@@ -139,15 +142,17 @@ int enter_clone(struct clone_entry_args_t  *args){
     bpf_probe_read_user(&clone_data.parent_tid, sizeof(clone_data.parent_tid), args->parent_tidptr);
     bpf_probe_read_user(&clone_data.child_tid, sizeof(clone_data.child_tid), args->child_tidptr);
     clone_data.clone_flags = args->clone_flags;
+    clone_data.tls = args->tls;
 
     // Send out on the perf event map
     bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &clone_data, sizeof(clone_data));
+    if (DEBUG) bpf_printk("---tracepoint/syscalls/sys_enter_clone---");
     return 0;
 }
 
 struct exec_data_t {
     __u32 pid;
-    __u8 fname[DATA_SIZE_32];
+    __u8 f_name[DATA_SIZE_32];
     __u8 comm[DATA_SIZE_32];
 };
 
@@ -189,11 +194,12 @@ int enter_execve(struct execve_entry_args_t *args){
     pid_tgid = bpf_get_current_pid_tgid();
     exec_data.pid = LAST_32_BITS(pid_tgid);
 
-    bpf_probe_read_user_str(exec_data.fname, sizeof(exec_data.fname), args->filename);
+    bpf_probe_read_user_str(exec_data.f_name, sizeof(exec_data.f_name), args->filename);
     bpf_get_current_comm(exec_data.comm, sizeof(exec_data.comm));
 
     // Send out on the perf event map
     bpf_perf_event_output(args, &events, BPF_F_CURRENT_CPU, &exec_data, sizeof(exec_data));
+    if (DEBUG) bpf_printk("---tracepoint/syscall/sys_enter_execve---");
     return 0;
 }
 

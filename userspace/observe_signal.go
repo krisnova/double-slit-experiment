@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/ebpf/perf"
+	"github.com/kris-nova/logger"
 )
 
 type SignalObservationPoint struct {
@@ -30,10 +31,12 @@ type SignalObservationPoint struct {
 }
 
 func (p *SignalObservationPoint) Event(record perf.Record) error {
+	logger.Always("Event Received!")
 	data, err := EventSignal(record)
 	if err != nil {
 		return err
 	}
+	fmt.Println("Signal")
 
 	for _, filt := range p.signalFilters {
 		if filt(data) {
@@ -41,7 +44,7 @@ func (p *SignalObservationPoint) Event(record perf.Record) error {
 		}
 	}
 
-	//logger.Always("ProcessEvent")
+	logger.Always("SignalEvent")
 	p.reference.eventCh <- NewSignalEvent("SignalDelivered", record.CPU, data)
 	return nil
 }
@@ -74,18 +77,18 @@ type SignalEvent struct {
 	Errno     int            `json:"Errno"`
 	Code      int            `json:"Code"`
 	Handler   uint64         `json:"Handler"`
-	Flags     uint64         `json:"Flag"`
+	Flags     uint64         `json:"Flags"`
 }
 
 func NewSignalEvent(name string, cpu int, signalData *signal_data_t) *SignalEvent {
 	return &SignalEvent{
 		data:      signalData,
 		EventName: name,
-		Signal:    signalData.Signal,
-		Errno:     signalData.Errno,
-		Code:      signalData.Code,
-		Handler:   signalData.SA_Handler,
-		Flags:     signalData.SA_Flags,
+		Signal:    int(signalData.Signal),
+		Errno:     int(signalData.Errno),
+		Code:      int(signalData.Code),
+		Handler:   signalData.SignalHandler,
+		Flags:     signalData.SignalFlags,
 	}
 }
 

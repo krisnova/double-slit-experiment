@@ -20,6 +20,8 @@ package userspace
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/cilium/ebpf"
 
@@ -91,14 +93,16 @@ func (o *Observer) LogEvents() {
 func (o *Observer) Start() error {
 
 	// [Load Tracepoints]
+	var loadedLinks []link.Link
 	for _, obs := range o.points {
 		obs.SetReference(o.reference)
 		for _, td := range obs.Tracepoints() {
 			logger.Info("Loading tracepoint: %s/%s", td.Group, td.Tracepoint)
-			_, err := link.Tracepoint(td.Group, td.Tracepoint, td.Program)
+			link, err := link.Tracepoint(td.Group, td.Tracepoint, td.Program)
 			if err != nil {
 				return fmt.Errorf("Error loading tracepoint: %v", err)
 			}
+			loadedLinks = append(loadedLinks, link)
 		}
 	}
 
@@ -109,29 +113,61 @@ func (o *Observer) Start() error {
 		return fmt.Errorf("Unable to start perf reader: %v", err)
 	}
 
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
 	// [ Main Processor ]
-	go func() {
-		for {
-			event, err := reader.Read()
-			if err != nil {
-				logger.Warning(err.Error())
-			}
-			if event.LostSamples > 0 {
-				logger.Warning("Dropping kernel samples: %d", event.LostSamples)
-				continue
-			}
-			for _, point := range o.points {
-				go func() {
-					err := point.Event(event)
-					if err != nil {
-						// TODO Handle error
-						//logger.Warning(err.Error())
-					}
-				}()
-			}
-		}
-	}()
+	go eventLoop(sigCh, reader, o.points, loadedLinks)
+
 	return nil
+}
+
+func eventLoop(sigCh chan os.Signal, reader *perf.Reader, points ObservationPoints, loadedLinks []link.Link) {
+	for {
+		select {
+		case s := <-sigCh:
+			switch s {
+			case os.Interrupt, os.Signal(syscall.SIGTERM), os.Signal(syscall.SIGQUIT), os.Signal(syscall.SIGINT):
+				fmt.Println()
+				logger.Critical("********************")
+				logger.Critical("Shutting down now!")
+				logger.Critical("********************")
+				fmt.Println()
+				for _, l := range loadedLinks {
+					go func() {
+						err := l.Close()
+						if err != nil {
+							logger.Warning("Error unlinking: %s", err)
+						}
+					}()
+				}
+				err := reader.Close()
+				if err != nil {
+					logger.Critical("Unable to close reader: %v", err)
+					os.Exit(1)
+				}
+				os.Exit(0)
+			}
+		default:
+			break
+		}
+		event, err := reader.Read()
+		if err != nil {
+			logger.Warning(err.Error())
+		}
+		if event.LostSamples > 0 {
+			logger.Warning("Dropping kernel samples: %d", event.LostSamples)
+			continue
+		}
+		for _, point := range points {
+			go func() {
+				err := point.Event(event)
+				if err != nil {
+					logger.Warning(err.Error())
+				}
+			}()
+		}
+	}
 }
 
 // EventStream will return the channel of events.

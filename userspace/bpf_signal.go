@@ -30,15 +30,15 @@ func EventSignal(event perf.Record) (*signal_data_t, error) {
 	var data signal_data_t
 	err := binary.Read(buffer, binary.LittleEndian, &data)
 	if err != nil {
-		return nil, fmt.Errorf("execve() kernel event perf: %v", err)
+		return nil, fmt.Errorf("signal_delivered() kernel event perf: %v", err)
 	}
 	return &data, nil
 }
 
 type signal_data_t struct {
-	Signal     int
-	Errno      int
-	Code       int
-	SA_Handler uint64
-	SA_Flags   uint64
+	Signal        int32
+	Errno         int32
+	Code          int32
+	SignalHandler uint64
+	SignalFlags   uint64
 }

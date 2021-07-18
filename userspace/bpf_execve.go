@@ -36,7 +36,7 @@ func EventExecve(event perf.Record) (*execve_data_t, error) {
 }
 
 type execve_data_t struct {
-	Pid    uint32
-	F_name [32]byte
-	Comm   [32]byte
+	Pid      uint32
+	Filename [32]byte
+	Comm     [32]byte
 }

@@ -76,6 +76,7 @@ type ContainerEvent struct {
 	ParentPid  int           `json:"ParentPid"`
 	ChildPid   int           `json:"ChildPid"`
 	CloneFlags uint          `json:"CloneFlags"`
+	TLS        uint          `json:"TLS"`
 }
 
 func NewContainerEvent(name string, cpu int, cloneData *clone_data_t) *ContainerEvent {
@@ -86,6 +87,7 @@ func NewContainerEvent(name string, cpu int, cloneData *clone_data_t) *Container
 		ParentPid:  int(cloneData.Parent_tid),
 		ChildPid:   int(cloneData.Child_tid),
 		CloneFlags: uint(cloneData.Clone_flags),
+		TLS:        uint(cloneData.TLS),
 	}
 }
 

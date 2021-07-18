@@ -17,7 +17,13 @@
 
 package userspace
 
-func DefaultProfile() ObservationPoints {
+func ProfileSignalsOnly() ObservationPoints {
+	return ObservationPoints{
+		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{}),
+	}
+}
+
+func ProfileDefault() ObservationPoints {
 	FilterCloneFlagMask = CEMPTY
 	return ObservationPoints{
 		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{}),

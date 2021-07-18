@@ -79,7 +79,7 @@ func NewProcessEvent(name string, cpu int, execData *execve_data_t) *ProcessEven
 	return &ProcessEvent{
 		data:      execData,
 		EventName: name,
-		Filename:  BytesToString32(execData.F_name),
+		Filename:  BytesToString32(execData.Filename),
 		Comm:      BytesToString32(execData.Comm),
 		PID:       uint(execData.Pid),
 	}
@@ -90,7 +90,7 @@ func (p *ProcessEvent) JSON() ([]byte, error) {
 }
 
 func (p *ProcessEvent) String() string {
-	return fmt.Sprintf("[%s] (%d) (CPU: %d): %s", p.data.Comm, p.data.Pid, p.CPU, p.data.F_name)
+	return fmt.Sprintf("[%s] (%d) (CPU: %d): %s", p.data.Comm, p.data.Pid, p.CPU, p.data.Filename)
 }
 
 func (p *ProcessEvent) Name() string {
@@ -100,7 +100,7 @@ func (p *ProcessEvent) Name() string {
 type FilterExecve func(d *execve_data_t) bool
 
 func FilterEmptyFilename(d *execve_data_t) bool {
-	filename := BytesToString32(d.F_name)
+	filename := BytesToString32(d.Filename)
 	if filename == "" {
 		return true
 	}
