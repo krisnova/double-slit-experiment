@@ -57,6 +57,7 @@ func main() {
 			cli.ShowAppHelpAndExit(context, 0)
 			return nil
 		},
+
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:        "rlimit-infinity",
@@ -80,6 +81,15 @@ func main() {
 				Usage:   "Run with the default profile, and print JSON events.",
 				Action: func(c *cli.Context) error {
 					return RunDSE() // X gonna give it to ya
+				},
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:        "verbose",
+						Aliases:     []string{"v"},
+						Value:       true,
+						Destination: &verbosity,
+						Usage:       "Toggle the verbosity of the program.",
+					},
 				},
 			},
 		},

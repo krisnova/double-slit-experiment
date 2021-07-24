@@ -25,8 +25,8 @@ import (
 )
 
 type ProcessObservationPoint struct {
-	reference     ObservationReference
-	execveFilters []FilterExecve
+	reference   ObservationReference
+	dropFilters []DropExecve
 }
 
 func (p *ProcessObservationPoint) Event(record perf.Record) error {
@@ -35,8 +35,8 @@ func (p *ProcessObservationPoint) Event(record perf.Record) error {
 		return err
 	}
 
-	for _, filt := range p.execveFilters {
-		if filt(data) {
+	for _, drop := range p.dropFilters {
+		if drop(data) {
 			return nil
 		}
 	}
@@ -60,9 +60,9 @@ func (p *ProcessObservationPoint) SetReference(reference ObservationReference) {
 	p.reference = reference
 }
 
-func NewProcessObservationPoint(execveFilters []FilterExecve) *ProcessObservationPoint {
+func NewProcessObservationPoint(dropFilters []DropExecve) *ProcessObservationPoint {
 	return &ProcessObservationPoint{
-		execveFilters: execveFilters,
+		dropFilters: dropFilters,
 	}
 }
 
@@ -98,12 +98,11 @@ func (p *ProcessEvent) Name() string {
 	return p.EventName
 }
 
-type FilterExecve func(d *execve_data_t) bool
+type DropExecve func(d *execve_data_t) bool
 
-func FilterEmptyFilename(d *execve_data_t) bool {
-	filename := BytesToString32(d.Filename)
-	if filename == "" {
-		return true
+func DropExecveFilename(filename string) DropExecve {
+	return func(d *execve_data_t) bool {
+		actual := BytesToString32(d.Filename)
+		return actual == filename
 	}
-	return false
 }

@@ -50,3 +50,47 @@ type Event interface {
 }
 ```
 
+# Filters
+
+The Double Slit Experiment has two types of filters that can be applied to various Observation Points.
+
+ - SelectFunction() _Select ANY that match this condition_
+ - DropFunction() _Drop ANY that match this condition_
+
+Filters are managed different for each Observation Point, however `drop` functions drop as soon as a match is found.
+
+Select functions are active, meaning they will drop any data that does not match the select.
+
+Consider the following stream of data where all integers 0 through 9 were sent through systems `select()` and `drop()`. 
+
+```go
+package main
+
+func main() {
+	data := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	for _, n := range data {
+		selectFunction(n)
+		dropFunction(n)
+    }
+}
+```
+
+Select functions will return data that matches a condition (similar to [Unix](https://en.wikipedia.org/wiki/Filter_(software)#Unix)'s `grep` by Ken Thompson).
+
+```go
+package main 
+
+func selectSeven(n int) bool {
+    return n == 7
+}
+// output: _, _, _, _, _, _, _, 7, _, _,
+```
+
+Drop functions will drop data that matches a condition. 
+
+```go
+func dropSeven(n int) {
+	return n != 7
+}
+// output: 0, 1, 2, 3, 4, 5, 6, _, 8, 9
+```

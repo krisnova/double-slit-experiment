@@ -26,7 +26,7 @@ import (
 
 type SocketObservationPoint struct {
 	reference     ObservationReference
-	socketFilters []FilterSocket
+	dropFunctions []DropSocket
 }
 
 func (p *SocketObservationPoint) Event(record perf.Record) error {
@@ -35,8 +35,8 @@ func (p *SocketObservationPoint) Event(record perf.Record) error {
 		return err
 	}
 
-	for _, filt := range p.socketFilters {
-		if filt(data) {
+	for _, drop := range p.dropFunctions {
+		if drop(data) {
 			return nil
 		}
 	}
@@ -59,9 +59,9 @@ func (p *SocketObservationPoint) SetReference(reference ObservationReference) {
 	p.reference = reference
 }
 
-func NewSocketObservationPoint(socketFilters []FilterSocket) *SocketObservationPoint {
+func NewSocketObservationPoint(dropFunctions []DropSocket) *SocketObservationPoint {
 	return &SocketObservationPoint{
-		socketFilters: socketFilters,
+		dropFunctions: dropFunctions,
 	}
 }
 
@@ -111,11 +111,8 @@ func (p *SocketEvent) Name() string {
 	return p.EventName
 }
 
-type FilterSocket func(d *inet_sock_data_t) bool
+type DropSocket func(d *inet_sock_data_t) bool
 
-func FilterSocketProtocolNotZero(d *inet_sock_data_t) bool {
-	if d.Protocol != 0 {
-		return true
-	}
-	return false
+func DropSocketProtocolEq0(d *inet_sock_data_t) bool {
+	return d.Protocol == 0
 }

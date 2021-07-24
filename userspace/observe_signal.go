@@ -26,7 +26,7 @@ import (
 
 type SignalObservationPoint struct {
 	reference     ObservationReference
-	signalFilters []FilterSignal
+	dropFunctions []DropSignal
 }
 
 func (p *SignalObservationPoint) Event(record perf.Record) error {
@@ -35,8 +35,8 @@ func (p *SignalObservationPoint) Event(record perf.Record) error {
 		return err
 	}
 
-	for _, filt := range p.signalFilters {
-		if filt(data) {
+	for _, drop := range p.dropFunctions {
+		if drop(data) {
 			return nil
 		}
 	}
@@ -59,9 +59,9 @@ func (p *SignalObservationPoint) SetReference(reference ObservationReference) {
 	p.reference = reference
 }
 
-func NewSignalObservationPoint(signalFilters []FilterSignal) *SignalObservationPoint {
+func NewSignalObservationPoint(dropFunctions []DropSignal) *SignalObservationPoint {
 	return &SignalObservationPoint{
-		signalFilters: signalFilters,
+		dropFunctions: dropFunctions,
 	}
 }
 
@@ -101,11 +101,12 @@ func (p *SignalEvent) Name() string {
 	return p.EventName
 }
 
-type FilterSignal func(d *signal_data_t) bool
+type DropSignal func(d *signal_data_t) bool
 
-func FilterSignalCodeNotZero(d *signal_data_t) bool {
-	if d.Code != 0 {
-		return true
-	}
-	return false
+func DropSignalCodeEq0(d *signal_data_t) bool {
+	return d.Code == 0
+}
+
+func DropSignalFlagsEq0(d *signal_data_t) bool {
+	return d.SignalFlags == 0
 }

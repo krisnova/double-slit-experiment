@@ -19,51 +19,46 @@ package userspace
 
 func ProfileSignalsOnly() ObservationPoints {
 	return ObservationPoints{
-		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{}),
+		"SignalDelivered": NewSignalObservationPoint([]DropSignal{}),
 	}
 }
 
 func ProfileDefault() ObservationPoints {
-	FilterCloneFlagMask = CEMPTY
 	return ObservationPoints{
-		"SocketState": NewSocketObservationPoint([]FilterSocket{
-			FilterSocketProtocolNotZero,
+		"SocketState": NewSocketObservationPoint([]DropSocket{
+
+			// Drop all sockets where protocol = 0
+			DropSocketProtocolEq0,
 		}),
-		"SignalDelivered": NewSignalObservationPoint([]FilterSignal{
-			FilterSignalCodeNotZero,
+		"SignalDelivered": NewSignalObservationPoint([]DropSignal{
+
+			// Drop all signals where flags = 0
+			DropSignalFlagsEq0,
+
+			// Drop all signals where code = 0
+			DropSignalCodeEq0,
 		}),
-		"ProcessExecuted": NewProcessObservationPoint([]FilterExecve{
-			FilterEmptyFilename,
+		"ProcessExecuted": NewProcessObservationPoint([]DropExecve{
+
+			// Drop all execves with an empty filename
+			DropExecveFilename(""),
 		}),
-		"ContainerStarted": NewContainerObservationPoint([]FilterClone{
+		"ContainerStarted": NewContainerObservationPoint([]DropClone{
+			// Drop all clones with these flags set
+			DropCloneFlagMask(CLONE_VFORK),
 
-			// Only show clones that are non zero
-			FilterCloneFlagsNonZero,
+			// Select clones with these flags set
+			SelectCloneFlagMask(CLONE_PIDFD | CLONE_SYSVSEM),
 
-			// Filter out all clone events where the child pid
-			// is set to 0.
-			FilterChild0,
+			// Drop all clones where child PID = 0
+			DropCloneChildEq0,
 
-			// Sometimes bash will fork, but use the clone()
-			// syscall. We can filter those out now.
-			//FilterCloneCLONE_VFORK,
+			// Drop all clones where flags = 0 (no arguments)
+			DropCloneFlagsEq0,
+		}, []DropCloneProcess{
 
-			//FilterCloneCLONE_NEWIPC,
-			//FilterCloneCLONE_NEWCGROUP,
-			//FilterCloneCLONE_NEWNET,
-			//FilterCloneCLONE_NEWNS,
-			//FilterCloneCLONE_NEWPID,
-			//FilterCloneCLONE_NEWUSER,
-
-			//FilterCloneCLONE_VM,
-			//FilterCloneCLONE_FILES,
-			//FilterCloneCLONE_CHILD_CLEARTID,
-			//FilterCloneCLONE_PARENT,
-			//FilterCloneCLONE_PARENT_SETTID,
-			//FilterCloneCLONE_DETACHED,
-			//FilterCloneCLONE_PTRACE,
-
-			//FilterCloneFlagsByMask,
+			// Drop all clones that come from an executable named 'kthreadd'
+			DropCloneExecutable("kthreadd"),
 		}),
 	}
 }
